@@ -5,49 +5,81 @@
   <title>Minimal M3U8 Player</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    body { margin: 0; background: black; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    video { width: 90%; max-width: 1000px; height: auto; outline: none; }
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    video {
+      width: 90%;
+      max-width: 1000px;
+      height: auto;
+      outline: none;
+    }
   </style>
 </head>
 <body>
 
-<video id="video" controls autoplay></video>
+<video id="video" controls autoplay muted playsinline></video>
 
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const videoSrc = params.get("url");
-  const subUrls = params.getAll("sub"); // Gets all ?sub= parameters
-  const subNames = params.getAll("name"); // Gets all ?name= parameters
-  const video = document.getElementById("video");
+const params = new URLSearchParams(window.location.search);
+const videoSrc = params.get("url");
+const subUrls = params.getAll("sub");
+const subNames = params.getAll("name");
+const video = document.getElementById("video");
 
-  if (!videoSrc) {
-    alert("No ?url= parameter provided");
-  } else {
-    // 1. Add Subtitles (if any)
-    subUrls.forEach((url, index) => {
-      const track = document.createElement('track');
-      track.kind = 'subtitles';
-      track.label = subNames[index] || `Subtitle ${index + 1}`;
-      track.src = url;
-      track.srclang = 'en'; // Standard placeholder
-      video.appendChild(track);
+if (!videoSrc) {
+  alert("No ?url= parameter provided");
+  throw new Error("Missing url parameter");
+}
+
+// Always enable CORS mode
+video.crossOrigin = "anonymous";
+
+// Add subtitles safely (won’t break playback if they fail)
+subUrls.forEach((url, index) => {
+  const track = document.createElement("track");
+  track.kind = "subtitles";
+  track.label = subNames[index] || `Subtitle ${index + 1}`;
+  track.src = url;
+  track.srclang = "en";
+  track.crossOrigin = "anonymous";
+  video.appendChild(track);
+});
+
+if (Hls.isSupported()) {
+
+  const hls = new Hls({
+    enableWorker: true,
+    lowLatencyMode: true
+  });
+
+  hls.attachMedia(video);
+
+  hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+    hls.loadSource(videoSrc);
+  });
+
+  hls.on(Hls.Events.MANIFEST_PARSED, function () {
+    video.play().catch(() => {
+      console.log("Autoplay blocked. User interaction required.");
     });
+  });
 
-    // 2. Initialize Playback
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, function() {
-        video.play().catch(() => console.log("Autoplay blocked, waiting for user interaction."));
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // For Safari native HLS support
-      video.src = videoSrc;
-    } else {
-      alert("HLS not supported in this browser.");
-    }
-  }
+  hls.on(Hls.Events.ERROR, function (event, data) {
+    console.log("HLS error:", data);
+  });
+
+} else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+  // Safari native HLS
+  video.src = videoSrc;
+} else {
+  alert("HLS not supported in this browser.");
+}
 </script>
 
 </body>
