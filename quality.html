@@ -1,33 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid Proxy Player</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>Android Native Direct Player</title>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .wrapper { width: 100%; max-width: 800px; }
-        video { width: 100%; border-radius: 8px; background: #111; box-shadow: 0 0 20px rgba(0,255,0,0.1); }
-        .controls { margin-top: 15px; background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333; }
-        select { width: 100%; padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 5px; font-size: 16px; }
-        #status { margin-top: 10px; font-size: 11px; color: #0f0; font-family: monospace; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+        video { width: 100%; max-width: 800px; background: #111; margin-top: 20px; }
+        .controls { margin: 20px; padding: 15px; background: #222; border-radius: 8px; }
+        select { width: 80%; padding: 10px; font-size: 16px; }
+        #status { color: #888; font-size: 12px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="wrapper">
     <video id="video" controls autoplay playsinline></video>
     
     <div class="controls">
-        <label style="display:block; margin-bottom:5px;">Select Quality (Native Switch):</label>
+        <p>Quality Selector</p>
         <select id="qualitySelect">
-            <option>Fetching Qualities...</option>
+            <option>Loading Stream...</option>
         </select>
+        <div id="status">Checking stream access...</div>
     </div>
-
-    <div id="status">Status: Waiting for URL...</div>
-</div>
 
 <script>
     const video = document.getElementById('video');
@@ -36,81 +31,61 @@
 
     const params = new URLSearchParams(window.location.search);
     const videoSrc = params.get("url");
-    const proxy = "https://corsproxy.io/?";
-
-    function log(msg) { status.innerHTML = `> ${msg}<br>` + status.innerHTML; }
 
     if (!videoSrc) {
-        log("ERROR: No ?url= provided.");
+        status.innerText = "Error: No URL provided in ?url=";
     } else {
-        log("Starting Hybrid Loader...");
-        initHybridPlayer();
+        startPlaying();
     }
 
-    function initHybridPlayer() {
-        // We create an invisible HLS instance just to parse the file
-        const hls = new Hls();
-        
-        // Use proxy ONLY for the manifest parsing
-        const proxiedUrl = proxy + encodeURIComponent(videoSrc);
-        log("Parsing manifest via proxy...");
+    async function startPlaying() {
+        // 1. Set the video source immediately to let the browser handle the handshake
+        video.src = videoSrc;
+        status.innerText = "Attempting native handshake...";
 
-        hls.loadSource(proxiedUrl);
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            log("Manifest Parsed! Found " + data.levels.length + " qualities.");
+        // 2. Try to "Peek" into the file to see if we can find qualities
+        try {
+            const response = await fetch(videoSrc);
+            if (!response.ok) throw new Error("CORS Blocked");
             
-            selector.innerHTML = ''; // Clear loading message
+            const text = await response.text();
+            status.innerText = "Manifest read success! Parsing levels...";
+            parseManifest(text, videoSrc);
+        } catch (e) {
+            status.innerText = "CORS Blocked Quality Manual Selection. Playing in Auto Mode.";
+            selector.innerHTML = '<option>Auto (Adaptive Only)</option>';
+        }
+    }
 
-            // Add the Original 'Auto' (Master) link
-            const autoOpt = document.createElement('option');
-            autoOpt.value = videoSrc;
-            autoOpt.text = "Auto (Adaptive)";
-            selector.appendChild(autoOpt);
-
-            // Add each specific quality level
-            data.levels.forEach((level) => {
+    function parseManifest(text, baseUrl) {
+        const lines = text.split('\n');
+        selector.innerHTML = '<option value="' + baseUrl + '">Auto (Default)</option>';
+        
+        // Simple manual parser for M3U8 lines
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('#EXT-X-STREAM-INF')) {
+                const metadata = lines[i];
+                const url = lines[i+1];
+                
+                // Get Resolution
+                const resMatch = metadata.match(/RESOLUTION=(\d+x\d+)/);
+                const resolution = resMatch ? resMatch[1].split('x')[1] + 'p' : "Unknown";
+                
                 const opt = document.createElement('option');
-                // The actual URL for this specific quality
-                opt.value = level.url[0]; 
-                const label = level.height ? `${level.height}p` : `${Math.round(level.bitrate/1000)}k`;
-                opt.text = label;
+                // Handle relative vs absolute URLs
+                opt.value = url.startsWith('http') ? url : new URL(url, baseUrl).href;
+                opt.text = resolution;
                 selector.appendChild(opt);
-            });
-
-            // Start playing the Master URL natively
-            playNative(videoSrc);
-        });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) log("PARSE ERROR: " + data.details + ". Check if proxy is down.");
-        });
-
-        // Handle the Manual Switch
-        selector.onchange = () => {
-            const selectedUrl = selector.value;
-            log("Switching Native Source to: " + selector.options[selector.selectedIndex].text);
-            
-            // Save current time so video doesn't restart from 0
-            const currentTime = video.currentTime;
-            const isPaused = video.paused;
-
-            playNative(selectedUrl);
-
-            video.addEventListener('loadedmetadata', function onMetadata() {
-                video.currentTime = currentTime;
-                if (!isPaused) video.play();
-                video.removeEventListener('loadedmetadata', onMetadata);
-            });
-        };
+            }
+        }
     }
 
-    function playNative(url) {
-        // Here we play it NATIVELY without Hls.js
-        video.src = url;
-        video.load();
-        video.play().catch(() => log("Autoplay prevented."));
-    }
+    selector.onchange = () => {
+        const currentTime = video.currentTime;
+        video.src = selector.value;
+        video.currentTime = currentTime;
+        video.play();
+    };
 </script>
 </body>
 </html>
