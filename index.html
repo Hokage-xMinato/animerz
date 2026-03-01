@@ -183,6 +183,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
 .srow .dot{width:5px;height:5px;border-radius:50%;background:var(--gold);flex-shrink:0;opacity:0;transition:opacity .12s}
 .srow.on .dot{opacity:1}
 .srow .srow-sub{font-size:10px;color:var(--dim);margin-left:5px}
+.qual-badge{background:var(--gold);color:#000;font-size:8px;font-weight:800;letter-spacing:.08em;padding:1px 5px;border-radius:3px;margin-left:6px;color:#1a1000 !important;vertical-align:middle}
 
 .sscroll{max-height:160px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent;padding:0 4px;}
 
@@ -409,25 +410,66 @@ function init(cfg){
 
   let hls=null,dur=0,hideT=null,introDone=false,outroDone=false;
   let activeTrack=-1,capLines=[],kT=null,dragging=false;
-  let highestLevel=-1; // track highest quality level index
 
   // Hide intro/outro skip toggles if no markers
   if(isNaN(introStart))$('rsi').style.display='none';
   if(isNaN(outroStart))$('rso').style.display='none';
 
+  // ── QUALITY LEVELS (URL substitution) ─────────────
+  // Replace whatever .m3u8 filename is at the end of the URL with the desired one
+  const QUALITIES=[
+    {label:'1080p',file:'index-f1-v1-a1.m3u8',badge:'HD'},
+    {label:'720p', file:'index-f2-v1-a1.m3u8',badge:''},
+    {label:'360p', file:'index-f3-v1-a1.m3u8',badge:''},
+  ];
+  let currentQualityIdx=0; // start at 1080p
+
+  function buildQualUrl(file){
+    // Replace the last path segment (*.m3u8) with the target file
+    return url.replace(/[^/]+\.m3u8(\?.*)?$/, file);
+  }
+
+  // Build quality rows in settings
+  function buildQualUI(){
+    ql.innerHTML='';
+    QUALITIES.forEach((q,i)=>{
+      const el=document.createElement('div');
+      el.className='srow'+(i===0?' on':'');
+      el.dataset.qi=i;
+      el.innerHTML=`<span>${q.label}${q.badge?`<span class="srow-sub qual-badge">${q.badge}</span>`:''}</span><div class="dot"></div>`;
+      el.addEventListener('click',()=>switchQuality(i,el));
+      ql.appendChild(el);
+    });
+  }
+
+  function switchQuality(idx,el){
+    if(idx===currentQualityIdx){closeSettings();return;}
+    currentQualityIdx=idx;
+    ql.querySelectorAll('.srow').forEach(r=>r.classList.remove('on'));
+    el.classList.add('on');
+    const targetUrl=buildQualUrl(QUALITIES[idx].file);
+    const pos=vid.currentTime;
+    const wasPlaying=!vid.paused;
+    spin.style.display='block';
+    // Destroy old HLS and reload with new stream URL
+    if(hls){hls.destroy();hls=null;}
+    loadHLS(targetUrl,pos,wasPlaying);
+    flash(`Quality: ${QUALITIES[idx].label}`);
+    closeSettings();
+  }
+
+  buildQualUI();
+
   // ── SETTINGS PANEL POSITIONING ────────────────────
   function positionPanel(){
     const bRect=bs.getBoundingClientRect();
-    const pw2=260;
-    const margin=10;
-    // place above button
-    const panelH=settingsPanel.offsetHeight||340;
+    const panelW=260,margin=10;
+    const panelH=settingsPanel.offsetHeight||320;
     let top=bRect.top-panelH-10;
     if(top<margin)top=bRect.bottom+10;
-    let left=bRect.right-pw2;
+    let left=bRect.right-panelW;
     if(left<margin)left=margin;
-    if(left+pw2>window.innerWidth-margin)left=window.innerWidth-pw2-margin;
-    // clamp bottom so it's never cut off
+    if(left+panelW>window.innerWidth-margin)left=window.innerWidth-panelW-margin;
     if(top+panelH>window.innerHeight-margin)top=window.innerHeight-panelH-margin;
     settingsPanel.style.left=left+'px';
     settingsPanel.style.top=top+'px';
@@ -466,169 +508,44 @@ function init(cfg){
     if(!e.target.closest('#settings-panel')&&!e.target.closest('#bs'))closeSettings();
   });
   settingsPanel.addEventListener('click',e=>e.stopPropagation());
-
   window.addEventListener('resize',()=>{if(settingsPanel.classList.contains('open'))positionPanel()});
 
-  // ── HLS SETUP ─────────────────────────────────────
-  // Parse M3U8 to find levels, then play highest quality directly
-  async function fetchAndPickBestLevel(manifestUrl){
-    try{
-      const resp=await fetch(manifestUrl);
-      const txt=await resp.text();
-      // Check if it's a master playlist
-      if(!txt.includes('#EXT-X-STREAM-INF'))return null; // single rendition
-      return parseM3U8Levels(txt,manifestUrl);
-    }catch(e){return null}
-  }
-
-  function parseM3U8Levels(txt,baseUrl){
-    const lines=txt.split('\n');
-    const levels=[];
-    for(let i=0;i<lines.length;i++){
-      const l=lines[i].trim();
-      if(!l.startsWith('#EXT-X-STREAM-INF:'))continue;
-      if(l.includes('I-FRAME'))continue;
-      const bw=(l.match(/BANDWIDTH=(\d+)/)||[])[1]|0;
-      const res=l.match(/RESOLUTION=(\d+)x(\d+)/);
-      const w=res?+res[1]:0,h=res?+res[2]:0;
-      let j=i+1;
-      while(j<lines.length&&(!lines[j].trim()||lines[j].trim().startsWith('#')))j++;
-      const uri=lines[j]?.trim();
-      if(!uri)continue;
-      const resolved=/^https?:\/\//i.test(uri)?uri:resolveUri(uri,baseUrl);
-      levels.push({bandwidth:bw,width:w,height:h,uri:resolved});
-    }
-    return levels.sort((a,b)=>b.height-a.height||b.bandwidth-a.bandwidth);
-  }
-
-  function resolveUri(uri,base){
-    try{
-      const u=new URL(base);
-      if(uri.startsWith('/'))return u.origin+uri;
-      const p=u.pathname.split('/');p.pop();p.push(uri);
-      return u.origin+p.join('/');
-    }catch{return uri}
-  }
-
-  async function setupPlayer(){
-    const levels=await fetchAndPickBestLevel(url);
-
-    if(levels&&levels.length>0){
-      // Build quality UI from manifest levels
-      buildQualFromLevels(levels,url);
-
-      if(Hls.isSupported()){
-        hls=new Hls({
-          enableWorker:true,
-          startLevel:0, // start at highest (sorted desc)
-          maxBufferLength:60,
-          maxMaxBufferLength:120,
-          maxBufferSize:60*1000*1000,
-          highBufferWatchdogPeriod:4,
-          nudgeMaxRetry:10,
-        });
-        // Load the master manifest so hls.js can switch between all levels
-        hls.loadSource(url);
-        hls.attachMedia(vid);
-        hls.on(Hls.Events.MANIFEST_PARSED,(_,d)=>{
-          // hls.js levels are sorted differently; sync with our UI
-          highestLevel=0; // levels are desc in hls.js when startLevel=0 picks highest
-          hls.currentLevel=0; // Force highest quality initially
-          markActiveQuality(0);
-          vid.play().catch(()=>{});
-        });
-        hls.on(Hls.Events.LEVEL_SWITCHED,(_,d)=>{
-          markActiveQuality(d.level);
-        });
-        hls.on(Hls.Events.ERROR,(_,d)=>{
-          if(d.fatal){console.error('HLS fatal:',d.type,d.details);spin.style.display='none';}
-        });
-      } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
-        // Safari native: play highest level directly
-        vid.src=levels[0].uri;
-        vid.play().catch(()=>{});
-      } else {
-        showInv('HLS not supported in this browser.');
-        shell.style.display='none';
-      }
+  // ── HLS LOADER ────────────────────────────────────
+  function loadHLS(srcUrl, seekTo=0, autoPlay=true){
+    if(Hls.isSupported()){
+      hls=new Hls({
+        enableWorker:true,
+        startPosition:seekTo,
+        maxBufferLength:60,
+        maxMaxBufferLength:120,
+        maxBufferSize:60*1000*1000,
+        highBufferWatchdogPeriod:4,
+        nudgeMaxRetry:10,
+        fragLoadingTimeOut:20000,
+        manifestLoadingTimeOut:20000,
+      });
+      hls.loadSource(srcUrl);
+      hls.attachMedia(vid);
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+        if(seekTo>0)vid.currentTime=seekTo;
+        if(autoPlay)vid.play().catch(()=>{});
+        spin.style.display='none';
+      });
+      hls.on(Hls.Events.ERROR,(_,d)=>{
+        if(d.fatal){console.error('HLS fatal:',d.type,d.details);spin.style.display='none';}
+      });
+    } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
+      vid.src=srcUrl;
+      if(seekTo>0)vid.addEventListener('loadedmetadata',()=>{vid.currentTime=seekTo},{once:true});
+      if(autoPlay)vid.play().catch(()=>{});
     } else {
-      // Single stream or couldn't parse
-      buildQualSingle();
-      if(Hls.isSupported()){
-        hls=new Hls({enableWorker:true,maxBufferLength:60,maxMaxBufferLength:120});
-        hls.loadSource(url);
-        hls.attachMedia(vid);
-        hls.on(Hls.Events.MANIFEST_PARSED,()=>vid.play().catch(()=>{}));
-        hls.on(Hls.Events.ERROR,(_,d)=>{if(d.fatal)console.error('HLS',d)});
-      } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
-        vid.src=url;vid.play().catch(()=>{});
-      } else {
-        showInv('HLS not supported in this browser.');shell.style.display='none';
-      }
+      showInv('HLS not supported in this browser.');
+      shell.style.display='none';
     }
   }
 
-  setupPlayer();
-
-  // ── QUALITY UI ────────────────────────────────────
-  let manifestLevels=[]; // our parsed levels array
-  let selectedLevelIdx=0; // index in manifestLevels, 0=highest
-  let isAuto=false;
-
-  function buildQualFromLevels(levels,masterUrl){
-    manifestLevels=levels;
-    ql.innerHTML='';
-    // No "Auto" for initial — we start at highest. Add auto option.
-    const autoEl=mkQRow('Auto','Adaptive',null,false);
-    ql.appendChild(autoEl);
-    levels.forEach((l,i)=>{
-      const h=l.height||0;
-      const bw=l.bandwidth||0;
-      const label=h?`${h}p`:(bw?`${Math.round(bw/1000)}k`:`Stream ${i+1}`);
-      const sub=bw?`${Math.round(bw/1000)} kbps`:'';
-      ql.appendChild(mkQRow(label,sub,i,i===0));
-    });
-  }
-
-  function buildQualSingle(){
-    ql.innerHTML='';
-    ql.appendChild(mkQRow('Auto','Adaptive',null,true));
-  }
-
-  function mkQRow(label,sub,levelIdx,active){
-    const el=document.createElement('div');
-    el.className='srow'+(active?' on':'');
-    el.dataset.levelIdx=levelIdx===null?'auto':levelIdx;
-    el.innerHTML=`<span>${label}${sub?`<span class="srow-sub">${sub}</span>`:''}</span><div class="dot"></div>`;
-    el.addEventListener('click',()=>{
-      if(levelIdx===null){
-        // Auto
-        if(hls){hls.currentLevel=-1;isAuto=true;}
-        ql.querySelectorAll('.srow').forEach(r=>r.classList.remove('on'));
-        el.classList.add('on');
-        flash('Quality: Auto');closeSettings();
-      } else {
-        isAuto=false;
-        if(hls){
-          // Map our sorted level index back to hls.js level index
-          hls.currentLevel=levelIdx;
-          hls.loadLevel=levelIdx;
-        }
-        ql.querySelectorAll('.srow').forEach(r=>r.classList.remove('on'));
-        el.classList.add('on');
-        flash(`Quality: ${label}`);closeSettings();
-      }
-    });
-    return el;
-  }
-
-  function markActiveQuality(hlsLevelIdx){
-    if(isAuto)return;
-    // Sync UI dot — hls.js levels index matches our sorted array index since we pass the same manifest
-    ql.querySelectorAll('.srow').forEach(r=>{
-      r.classList.toggle('on',+r.dataset.levelIdx===hlsLevelIdx);
-    });
-  }
+  // Start at 1080p
+  loadHLS(buildQualUrl(QUALITIES[0].file));
 
   // ── SPEED ─────────────────────────────────────────
   [0.25,0.5,0.75,1,1.25,1.5,1.75,2].forEach(s=>{
