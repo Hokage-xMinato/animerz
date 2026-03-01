@@ -31,7 +31,7 @@
         const video = document.getElementById('video');
         const qualitySelect = document.getElementById('qualitySelect');
         // Example M3U8 link with multiple qualities (Mux test stream)
-        const videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        const videoSrc = 'https://dt.netmagcdn.com:2228/hls-playback/f7aea34d2bbe09b962858c9fefd4600b7f6dc326a95edd1cf5cb2075981004af85abcf2724596b251b7cd0cc21f2b8850acdccb6cbec0c36dd90d7bd483722543d490fba70ed84e4b2c6f4fe94a8ff0ed0a0f9175df207c7e3189e093673769cbc8dd5b05b82637caf88749b24af9ee0288a7fbfb3711a2dbcb8a4e82f43b3a772364e2e1014740bde5f6fe60e23716d/master.m3u8';
 
         if (Hls.isSupported()) {
             const hls = new Hls();
