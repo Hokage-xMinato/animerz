@@ -2,76 +2,71 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>M3U8 Player + Subtitles</title>
+  <title>Simple M3U8 Player</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    body { margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; color: white; }
-    .container { position: relative; width: 90%; max-width: 1000px; }
-    video { width: 100%; height: auto; display: block; }
-    .controls { margin-top: 15px; display: flex; gap: 10px; }
-    button { padding: 8px 15px; cursor: pointer; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
-    button:hover { background: #444; }
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    video {
+      width: 90%;
+      max-width: 1000px;
+      height: auto;
+    }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <video id="video" controls autoplay></video>
-  <div class="controls">
-    <button onclick="addSubtitlePrompt()">+ Add Subtitle URL</button>
-  </div>
-</div>
+<video id="video" controls autoplay></video>
 
 <script>
-  const video = document.getElementById("video");
   const params = new URLSearchParams(window.location.search);
   const videoSrc = params.get("url");
-  const subsParam = params.get("subs");
-  const namesParam = params.get("names");
+  
+  // New parameters for subtitles
+  const subsParam = params.get("subs");  
+  const namesParam = params.get("names"); 
 
-  // Function to add a track to the video
-  function addSubtitleTrack(url, label = "Manual Sub") {
-    const track = document.createElement("track");
-    track.kind = "subtitles";
-    track.label = label;
-    track.srclang = "en";
-    track.src = url;
-    video.appendChild(track);
-    
-    // Enable the newly added track
-    for (let i = 0; i < video.textTracks.length; i++) {
-        video.textTracks[i].mode = (video.textTracks[i].label === label) ? 'showing' : 'disabled';
-    }
-    console.log("Added subtitle:", label, url);
-  }
+  const video = document.getElementById("video");
 
-  // Prompt user for a subtitle file while playing
-  function addSubtitlePrompt() {
-    const url = prompt("Enter .vtt subtitle URL:");
-    if (url) {
-      const name = prompt("Enter label (e.g. English):", "New Sub");
-      addSubtitleTrack(url, name);
-    }
-  }
-
-  // 1. Initialize Video
   if (!videoSrc) {
-    alert("Please provide a ?url= parameter");
-  } else {
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoSrc;
-    }
+    alert("No ?url= parameter provided");
+    throw new Error("Missing url parameter");
+  }
 
-    // 2. Load subtitles from URL parameters
-    if (subsParam) {
-      const urls = subsParam.split(",");
-      const names = namesParam ? namesParam.split(",") : [];
-      urls.forEach((u, i) => addSubtitleTrack(u, names[i] || `Sub ${i + 1}`));
-    }
+  // --- SUBTITLE INJECTION ---
+  if (subsParam) {
+    const urls = subsParam.split(",");
+    const names = namesParam ? namesParam.split(",") : [];
+
+    urls.forEach((url, index) => {
+      const track = document.createElement("track");
+      track.kind = "subtitles";
+      track.label = names[index] || `Subtitle ${index + 1}`;
+      track.src = url;
+      track.srclang = "en";
+      // To auto-show the first subtitle, uncomment the line below:
+      // if (index === 0) track.default = true; 
+      video.appendChild(track);
+    });
+  }
+
+  // --- YOUR ORIGINAL WORKING LOGIC ---
+  if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari native HLS
+    video.src = videoSrc;
+  } else if (Hls.isSupported()) {
+    // Other browsers
+    const hls = new Hls();
+    hls.loadSource(videoSrc);
+    hls.attachMedia(video);
+  } else {
+    alert("HLS not supported in this browser.");
   }
 </script>
 
