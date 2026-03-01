@@ -1,68 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quick HLS Test</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
-        .player-card { background: #222; padding: 20px; border-radius: 12px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        video { width: 100%; max-width: 700px; border-radius: 4px; background: #000; }
-        .controls { margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        select { padding: 8px; border-radius: 4px; background: #444; color: white; border: 1px solid #666; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Dynamic M3U8 Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    body { margin: 0; background: #000; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    .container { width: 90%; max-width: 1000px; text-align: center; }
+    video { width: 100%; border-radius: 8px; background: #111; }
+    .controls { margin-top: 10px; display: flex; justify-content: center; gap: 10px; align-items: center; }
+    select { padding: 5px; border-radius: 4px; background: #333; color: white; border: 1px solid #555; }
+  </style>
 </head>
 <body>
 
-    <div class="player-card">
-        <h3>Stream Tester</h3>
-        <video id="video" controls></video>
-        
-        <div class="controls">
-            <span>Source Quality:</span>
-            <select id="qualitySelect">
-                <option value="-1">Auto (ABR)</option>
-            </select>
-        </div>
+<div class="container">
+    <video id="video" controls autoplay></video>
+    
+    <div class="controls">
+        <label>Stream Quality:</label>
+        <select id="qualitySelect">
+            <option value="-1">Auto (ABR)</option>
+        </select>
     </div>
+</div>
 
-    <script>
-        const video = document.getElementById('video');
-        const selector = document.getElementById('qualitySelect');
-        
-        // PASTE YOUR M3U8 LINK HERE
-        const videoSrc = 'https://dt.netmagcdn.com:2228/hls-playback/f7aea34d2bbe09b962858c9fefd4600b7f6dc326a95edd1cf5cb2075981004af85abcf2724596b251b7cd0cc21f2b8850acdccb6cbec0c36dd90d7bd483722543d490fba70ed84e4b2c6f4fe94a8ff0ed0a0f9175df207c7e3189e093673769cbc8dd5b05b82637caf88749b24af9ee0288a7fbfb3711a2dbcb8a4e82f43b3a772364e2e1014740bde5f6fe60e23716d/master.m3u8';
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const videoSrc = params.get("url");
+  const subsParam = params.get("subs");  
+  const namesParam = params.get("names"); 
+  const video = document.getElementById("video");
+  const selector = document.getElementById("qualitySelect");
 
-        if (Hls.isSupported()) {
-            const hls = new Hls();
-            hls.loadSource(videoSrc);
-            hls.attachMedia(video);
+  if (!videoSrc) {
+    document.body.innerHTML = "<h1>Error: No ?url= parameter found.</h1><p>Example: player.html?url=https://path/to/video.m3u8</p>";
+    throw new Error("Missing url parameter");
+  }
 
-            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                // Clear existing options except "Auto"
-                selector.innerHTML = '<option value="-1">Auto (ABR)</option>';
-                
-                // Map available levels to the dropdown
-                data.levels.forEach((level, index) => {
-                    const opt = document.createElement('option');
-                    opt.value = index;
-                    opt.text = level.height ? `${level.height}p` : `Level ${index}`;
-                    selector.appendChild(opt);
-                });
-                
-                video.play().catch(() => console.log("Autoplay blocked; waiting for user interaction."));
-            });
+  // --- SUBTITLE BLOB LOGIC ---
+  async function loadExternalSubs(url, label) {
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+      const blob = new Blob([text], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const track = document.createElement("track");
+      track.kind = "subtitles";
+      track.label = label;
+      track.src = blobUrl;
+      track.srclang = "en";
+      video.appendChild(track);
+    } catch (e) {
+      console.error("Subtitle fetch failed:", url);
+    }
+  }
 
-            // Manual Switch Logic
-            selector.onchange = () => {
-                hls.currentLevel = parseInt(selector.value);
-            };
+  if (subsParam) {
+    const urls = subsParam.split(",");
+    const names = namesParam ? namesParam.split(",") : [];
+    urls.forEach((url, index) => {
+      loadExternalSubs(url, names[index] || `Subtitle ${index + 1}`);
+    });
+  }
 
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Fallback for Safari
-            video.src = videoSrc;
-        }
-    </script>
+  // --- HLS LOGIC WITH QUALITY SELECTOR ---
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(videoSrc);
+    hls.attachMedia(video);
+
+    // Populate Qualities once manifest is parsed
+    hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+      // Clear and fill dropdown
+      selector.innerHTML = '<option value="-1">Auto (ABR)</option>';
+      data.levels.forEach((level, index) => {
+        const opt = document.createElement('option');
+        opt.value = index;
+        // Label by height (720, 1080) or bitrate if height is missing
+        opt.text = level.height ? `${level.height}p` : `${Math.round(level.bitrate/1000)}k`;
+        selector.appendChild(opt);
+      });
+      video.play();
+    });
+
+    // Handle Manual Quality Change
+    selector.onchange = () => {
+      hls.currentLevel = parseInt(selector.value);
+    };
+
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari Fallback
+    video.src = videoSrc;
+  }
+</script>
+
 </body>
 </html>
