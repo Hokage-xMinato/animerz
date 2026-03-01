@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>HLS Quality Selector</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: Arial;
+      text-align: center;
+      padding-top: 30px;
+    }
+    video {
+      width: 80%;
+      max-width: 900px;
+      border: 2px solid #444;
+      border-radius: 8px;
+    }
+    select {
+      margin-top: 15px;
+      padding: 8px 12px;
+      font-size: 16px;
+      background: #222;
+      color: white;
+      border: 1px solid #555;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>HLS Player with Quality Selector</h2>
+
+  <video id="video" controls></video>
+  <br/>
+  <label for="qualitySelect">Quality: </label>
+  <select id="qualitySelect">
+    <option value="-1">Auto</option>
+  </select>
+
+  <script>
+    const video = document.getElementById("video");
+    const qualitySelect = document.getElementById("qualitySelect");
+
+    const videoSrc = "YOUR_MASTER_M3U8_URL"; // ← Replace this
+
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(videoSrc);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+
+        // Populate quality dropdown
+        hls.levels.forEach((level, index) => {
+          const option = document.createElement("option");
+
+          const resolution = level.height
+            ? `${level.height}p`
+            : `${Math.round(level.bitrate / 1000)} kbps`;
+
+          option.value = index;
+          option.text = resolution;
+          qualitySelect.appendChild(option);
+        });
+
+        video.play();
+      });
+
+      // Change quality manually
+      qualitySelect.addEventListener("change", function () {
+        const selectedLevel = parseInt(this.value);
+        hls.currentLevel = selectedLevel;
+      });
+
+    } 
+    else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      // Safari native HLS fallback
+      video.src = videoSrc;
+      video.addEventListener("loadedmetadata", function () {
+        video.play();
+      });
+      alert("Manual quality selection not supported in Safari native mode.");
+    } 
+    else {
+      alert("HLS not supported in this browser.");
+    }
+  </script>
+
+</body>
+</html>
