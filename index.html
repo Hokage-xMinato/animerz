@@ -2,48 +2,66 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Simple M3U8 Player</title>
+  <title>M3U8 Player with Subtitles</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     body {
       margin: 0;
-      background: black;
+      background: #000;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      font-family: sans-serif;
     }
     video {
       width: 90%;
       max-width: 1000px;
-      height: auto;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
   </style>
 </head>
 <body>
 
-<video id="video" controls autoplay></video>
+<video id="video" controls autoplay crossorigin="anonymous"></video>
 
 <script>
   const params = new URLSearchParams(window.location.search);
   const videoSrc = params.get("url");
+  const subsParam = params.get("subs");      // Comma separated URLs
+  const namesParam = params.get("names");    // Comma separated Labels
+  
   const video = document.getElementById("video");
 
   if (!videoSrc) {
     alert("No ?url= parameter provided");
-    throw new Error("Missing url parameter");
-  }
-
-  if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari native HLS
-    video.src = videoSrc;
-  } else if (Hls.isSupported()) {
-    // Other browsers
-    const hls = new Hls();
-    hls.loadSource(videoSrc);
-    hls.attachMedia(video);
   } else {
-    alert("HLS not supported in this browser.");
+    // 1. Handle Subtitles first
+    if (subsParam) {
+      const subUrls = subsParam.split(",");
+      const subNames = namesParam ? namesParam.split(",") : [];
+
+      subUrls.forEach((url, index) => {
+        const track = document.createElement("track");
+        track.kind = "subtitles";
+        track.label = subNames[index] || `Subtitle ${index + 1}`;
+        track.srclang = "en"; // Default lang code
+        track.src = url;
+        // Optional: track.default = (index === 0); // Uncomment to auto-enable first sub
+        video.appendChild(track);
+      });
+    }
+
+    // 2. Handle Video Stream
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = videoSrc;
+    } else if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(videoSrc);
+      hls.attachMedia(video);
+    } else {
+      alert("HLS not supported in this browser.");
+    }
   }
 </script>
 
