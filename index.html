@@ -2,90 +2,60 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Click-to-Load M3U8 Player</title>
+  <title>Minimal M3U8 Player</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     body {
       margin: 0;
       background: black;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      gap: 20px;
     }
     video {
       width: 90%;
       max-width: 1000px;
       height: auto;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
 
-<button id="loadBtn">Load & Play</button>
-<video id="video" controls playsinline></video>
+<video id="video" controls></video>
 
 <script>
 const params = new URLSearchParams(window.location.search);
 const videoSrc = params.get("url");
 const subUrls = params.getAll("sub");
 const subNames = params.getAll("name");
-
 const video = document.getElementById("video");
-const button = document.getElementById("loadBtn");
 
 if (!videoSrc) {
   alert("No ?url= parameter provided");
+  throw new Error("Missing url parameter");
 }
 
-video.crossOrigin = "anonymous";
-
-button.addEventListener("click", () => {
-
-  // Add subtitles (if any)
-  subUrls.forEach((url, index) => {
-    const track = document.createElement("track");
-    track.kind = "subtitles";
-    track.label = subNames[index] || `Subtitle ${index + 1}`;
-    track.src = url;
-    track.srclang = "en";
-    track.crossOrigin = "anonymous";
-    video.appendChild(track);
-  });
-
-  if (Hls.isSupported()) {
-
-    const hls = new Hls();
-
-    hls.attachMedia(video);
-
-    hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-      hls.loadSource(videoSrc);
-    });
-
-    hls.on(Hls.Events.MANIFEST_PARSED, function () {
-      video.play();
-    });
-
-    hls.on(Hls.Events.ERROR, function (event, data) {
-      console.log("HLS error:", data);
-    });
-
-  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-    video.src = videoSrc;
-    video.play();
-  } else {
-    alert("HLS not supported in this browser.");
-  }
-
+/* ---------- Add Subtitles (Simple, No crossOrigin) ---------- */
+subUrls.forEach((url, index) => {
+  const track = document.createElement("track");
+  track.kind = "subtitles";
+  track.label = subNames[index] || `Subtitle ${index + 1}`;
+  track.src = url;
+  track.srclang = "en";
+  video.appendChild(track);
 });
+
+/* ---------- HLS Playback (Same as your working version) ---------- */
+if (Hls.isSupported()) {
+  const hls = new Hls();
+  hls.loadSource(videoSrc);
+  hls.attachMedia(video);
+} else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+  video.src = videoSrc;
+} else {
+  alert("HLS not supported in this browser.");
+}
 </script>
 
 </body>
