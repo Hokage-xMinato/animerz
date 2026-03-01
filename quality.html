@@ -1,99 +1,101 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Dynamic M3U8 Player</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <style>
-    body { margin: 0; background: #000; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-    .container { width: 90%; max-width: 1000px; text-align: center; }
-    video { width: 100%; border-radius: 8px; background: #111; }
-    .controls { margin-top: 10px; display: flex; justify-content: center; gap: 10px; align-items: center; }
-    select { padding: 5px; border-radius: 4px; background: #333; color: white; border: 1px solid #555; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Fixed M3U8 Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { margin: 0; background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .container { width: 90%; max-width: 800px; }
+        video { width: 100%; border: 1px solid #333; background: #111; }
+        #debug-log { background: #111; padding: 10px; height: 100px; overflow-y: auto; font-size: 12px; border: 1px solid #333; margin-top: 10px; width: 100%; }
+        .controls { margin: 10px 0; color: white; font-family: sans-serif; }
+    </style>
 </head>
 <body>
 
 <div class="container">
-    <video id="video" controls autoplay></video>
+    <video id="video" controls></video>
     
     <div class="controls">
-        <label>Stream Quality:</label>
-        <select id="qualitySelect">
-            <option value="-1">Auto (ABR)</option>
-        </select>
+        Quality: <select id="qualitySelect"><option>Loading...</option></select>
     </div>
+
+    <div id="debug-log">Initialising...<br></div>
 </div>
 
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const videoSrc = params.get("url");
-  const subsParam = params.get("subs");  
-  const namesParam = params.get("names"); 
-  const video = document.getElementById("video");
-  const selector = document.getElementById("qualitySelect");
+    const log = (msg) => { document.getElementById('debug-log').innerHTML += `> ${msg}<br>`; };
 
-  if (!videoSrc) {
-    document.body.innerHTML = "<h1>Error: No ?url= parameter found.</h1><p>Example: player.html?url=https://path/to/video.m3u8</p>";
-    throw new Error("Missing url parameter");
-  }
+    window.onload = function() {
+        const params = new URLSearchParams(window.location.search);
+        const videoSrc = params.get("url");
+        const video = document.getElementById("video");
+        const selector = document.getElementById("qualitySelect");
 
-  // --- SUBTITLE BLOB LOGIC ---
-  async function loadExternalSubs(url, label) {
-    try {
-      const response = await fetch(url);
-      const text = await response.text();
-      const blob = new Blob([text], { type: 'text/vtt' });
-      const blobUrl = URL.createObjectURL(blob);
-      
-      const track = document.createElement("track");
-      track.kind = "subtitles";
-      track.label = label;
-      track.src = blobUrl;
-      track.srclang = "en";
-      video.appendChild(track);
-    } catch (e) {
-      console.error("Subtitle fetch failed:", url);
-    }
-  }
+        if (!videoSrc) {
+            log("ERROR: No ?url= found in address bar!");
+            return;
+        }
 
-  if (subsParam) {
-    const urls = subsParam.split(",");
-    const names = namesParam ? namesParam.split(",") : [];
-    urls.forEach((url, index) => {
-      loadExternalSubs(url, names[index] || `Subtitle ${index + 1}`);
-    });
-  }
+        log("Attempting to load: " + videoSrc);
 
-  // --- HLS LOGIC WITH QUALITY SELECTOR ---
-  if (Hls.isSupported()) {
-    const hls = new Hls();
-    hls.loadSource(videoSrc);
-    hls.attachMedia(video);
+        if (Hls.isSupported()) {
+            log("Hls.js is supported. Initialising...");
+            const hls = new Hls({
+                // This helps bypass some basic "no-loader" issues
+                enableWorker: true,
+                lowLatencyMode: true
+            });
 
-    // Populate Qualities once manifest is parsed
-    hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
-      // Clear and fill dropdown
-      selector.innerHTML = '<option value="-1">Auto (ABR)</option>';
-      data.levels.forEach((level, index) => {
-        const opt = document.createElement('option');
-        opt.value = index;
-        // Label by height (720, 1080) or bitrate if height is missing
-        opt.text = level.height ? `${level.height}p` : `${Math.round(level.bitrate/1000)}k`;
-        selector.appendChild(opt);
-      });
-      video.play();
-    });
+            hls.loadSource(videoSrc);
+            hls.attachMedia(video);
 
-    // Handle Manual Quality Change
-    selector.onchange = () => {
-      hls.currentLevel = parseInt(selector.value);
+            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                log("Manifest parsed! Qualities found: " + data.levels.length);
+                
+                // Fill quality selector
+                selector.innerHTML = '<option value="-1">Auto (Adaptive)</option>';
+                data.levels.forEach((level, index) => {
+                    const label = level.height ? `${level.height}p` : `${Math.round(level.bitrate/1000)}k`;
+                    const opt = document.createElement('option');
+                    opt.value = index;
+                    opt.text = label;
+                    selector.appendChild(opt);
+                });
+
+                video.play().catch(e => log("Autoplay blocked. Press Play."));
+            });
+
+            // Error Handling - THIS WILL TELL US WHY IT FAILS
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    log("FATAL ERROR: " + data.type + " - " + data.details);
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            log("Network Error (CORS or 404). Check console.");
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            log("Media Error. Recovering...");
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            hls.destroy();
+                            break;
+                    }
+                }
+            });
+
+            selector.onchange = () => { hls.currentLevel = parseInt(selector.value); };
+
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            log("Using native Safari player.");
+            video.src = videoSrc;
+        } else {
+            log("HLS is not supported on this browser.");
+        }
     };
-
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari Fallback
-    video.src = videoSrc;
-  }
 </script>
 
 </body>
