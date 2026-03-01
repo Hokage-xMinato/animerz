@@ -1,72 +1,110 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Manual Manifest Injector</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3U8 Manual Quality Fix</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
-        video { width: 100%; max-width: 600px; border: 1px solid #333; }
-        textarea { width: 100%; height: 100px; background: #222; color: #0f0; border: 1px solid #444; margin: 10px 0; }
-        button { padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 5px; }
-        select { margin-top: 10px; padding: 10px; width: 100%; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .player-card { width: 100%; max-width: 800px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; }
+        video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; }
+        textarea { width: 100%; height: 80px; background: #222; color: #0f0; border: 1px solid #444; margin: 10px 0; padding: 10px; box-sizing: border-box; font-family: monospace; font-size: 12px; }
+        .controls { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
+        select { padding: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 16px; width: 100%; }
+        button { padding: 10px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        #status { font-size: 12px; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <video id="video" controls></video>
+<div class="player-card">
+    <video id="video" controls autoplay playsinline></video>
 
-    <div id="setup">
-        <h3>Paste M3U8 Source Text Here:</h3>
-        <textarea id="m3u8Text" placeholder="#EXTM3U..."></textarea>
-        <button onclick="injectManifest()">Generate Quality List</button>
+    <div id="setup-area">
+        <p style="margin: 0; font-size: 14px;">Paste the #EXTM3U text you see in your browser:</p>
+        <textarea id="m3u8Input" placeholder="#EXTM3U..."></textarea>
+        <button onclick="processManifest()">Unlock Qualities</button>
     </div>
 
-    <select id="qualitySelect" style="display:none;"></select>
+    <div class="controls" id="player-controls" style="display:none;">
+        <label>Select Quality:</label>
+        <select id="qualitySelect"></select>
+        <div id="status">Playing Auto Mode...</div>
+    </div>
+</div>
 
 <script>
     const video = document.getElementById('video');
+    const selector = document.getElementById('qualitySelect');
+    const input = document.getElementById('m3u8Input');
+    
+    // Get the base URL from the address bar (?url=...)
     const params = new URLSearchParams(window.location.search);
-    const videoSrc = params.get("url"); // The master link
+    const masterUrl = params.get("url");
 
-    function injectManifest() {
-        const text = document.getElementById('m3u8Text').value;
-        const selector = document.getElementById('qualitySelect');
-        const lines = text.split('\n');
-        
-        selector.innerHTML = '<option value="' + videoSrc + '">Auto (Original)</option>';
-        
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('#EXT-X-STREAM-INF')) {
-                const metadata = lines[i];
-                let url = lines[i+1].trim();
-                
-                // Fix relative URLs
-                if (!url.startsWith('http')) {
-                    const baseUrl = videoSrc.substring(0, videoSrc.lastIndexOf('/') + 1);
-                    url = baseUrl + url;
-                }
-
-                const resMatch = metadata.match(/RESOLUTION=(\d+x\d+)/);
-                const label = resMatch ? resMatch[1].split('x')[1] + 'p' : "Level " + i;
-
-                const opt = document.createElement('option');
-                opt.value = url;
-                opt.text = label;
-                selector.appendChild(opt);
-            }
-        }
-        
-        selector.style.display = 'block';
-        document.getElementById('setup').style.display = 'none';
-        video.src = videoSrc;
-        video.play();
+    if (masterUrl) {
+        video.src = masterUrl; // Start playing immediately
     }
 
-    document.getElementById('qualitySelect').onchange = function() {
-        const time = video.currentTime;
-        video.src = this.value;
-        video.currentTime = time;
-        video.play();
+    function processManifest() {
+        const text = input.textContent || input.value;
+        const lines = text.split('\n');
+        
+        // Find the base directory (everything before the last /)
+        // Example: https://site.com/hls/master.m3u8 -> https://site.com/hls/
+        const baseDir = masterUrl.substring(0, masterUrl.lastIndexOf('/') + 1);
+        
+        selector.innerHTML = '';
+        
+        // 1. Add the "Auto" option
+        const autoOpt = new Option("Auto (Adaptive)", masterUrl);
+        selector.add(autoOpt);
+
+        // 2. Parse the text for qualities
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (line.includes('#EXT-X-STREAM-INF')) {
+                // The next line that doesn't start with # is our URL
+                let subUrl = "";
+                for (let j = i + 1; j < lines.length; j++) {
+                    if (lines[j].trim() && !lines[j].startsWith('#')) {
+                        subUrl = lines[j].trim();
+                        break;
+                    }
+                }
+
+                if (subUrl) {
+                    // Fix the relative path
+                    const fullUrl = subUrl.startsWith('http') ? subUrl : baseDir + subUrl;
+                    
+                    // Get Resolution
+                    const resMatch = line.match(/RESOLUTION=(\d+x\d+)/);
+                    const label = resMatch ? resMatch[1].split('x')[1] + 'p' : "Manual";
+
+                    const opt = new Option(label, fullUrl);
+                    selector.add(opt);
+                }
+            }
+        }
+
+        // Show controls, hide input
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('player-controls').style.display = 'block';
+        document.getElementById('status').innerText = `Found ${selector.options.length - 1} qualities.`;
+    }
+
+    selector.onchange = () => {
+        const currentTime = video.currentTime;
+        const isPaused = video.paused;
+        
+        video.src = selector.value;
+        video.currentTime = currentTime;
+        
+        if (!isPaused) video.play();
+        document.getElementById('status').innerText = "Switched to: " + selector.options[selector.selectedIndex].text;
     };
 </script>
+
 </body>
 </html>
