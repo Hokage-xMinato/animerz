@@ -4,90 +4,60 @@
   <meta charset="UTF-8" />
   <title>HLS Quality Selector</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <style>
-    body {
-      background: #111;
-      color: white;
-      font-family: Arial;
-      text-align: center;
-      padding-top: 30px;
-    }
-    video {
-      width: 80%;
-      max-width: 900px;
-      border: 2px solid #444;
-      border-radius: 8px;
-    }
-    select {
-      margin-top: 15px;
-      padding: 8px 12px;
-      font-size: 16px;
-      background: #222;
-      color: white;
-      border: 1px solid #555;
-      border-radius: 5px;
-    }
-  </style>
 </head>
-<body>
+<body style="background:#111;color:white;text-align:center;font-family:sans-serif;">
 
-  <h2>HLS Player with Quality Selector</h2>
+<h2>HLS Player</h2>
 
-  <video id="video" controls></video>
-  <br/>
-  <label for="qualitySelect">Quality: </label>
-  <select id="qualitySelect">
-    <option value="-1">Auto</option>
-  </select>
+<video id="video" controls width="800"></video>
+<br><br>
 
-  <script>
-    const video = document.getElementById("video");
-    const qualitySelect = document.getElementById("qualitySelect");
+<select id="quality">
+  <option value="-1">Auto</option>
+</select>
 
-    const videoSrc = "https://dt.netmagcdn.com:2228/hls-playback/f7aea34d2bbe09b962858c9fefd4600b7f6dc326a95edd1cf5cb2075981004af85abcf2724596b251b7cd0cc21f2b8850acdccb6cbec0c36dd90d7bd483722543d490fba70ed84e4b2c6f4fe94a8ff0ed0a0f9175df207c7e3189e093673769cbc8dd5b05b82637caf88749b24af9ee0288a7fbfb3711a2dbcb8a4e82f43b3a772364e2e1014740bde5f6fe60e23716d/master.m3u8"; // ← Replace this
+<script>
+  const video = document.getElementById("video");
+  const qualitySelect = document.getElementById("quality");
 
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
+  const src = "YOUR_MASTER_M3U8_URL"; // replace
 
-      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+  if (Hls.isSupported()) {
+    const hls = new Hls({
+      xhrSetup: function(xhr) {
+        // Do NOT set withCredentials unless needed
+      }
+    });
 
-        // Populate quality dropdown
-        hls.levels.forEach((level, index) => {
-          const option = document.createElement("option");
+    hls.loadSource(src);
+    hls.attachMedia(video);
 
-          const resolution = level.height
-            ? `${level.height}p`
-            : `${Math.round(level.bitrate / 1000)} kbps`;
+    hls.on(Hls.Events.MANIFEST_PARSED, function() {
 
-          option.value = index;
-          option.text = resolution;
-          qualitySelect.appendChild(option);
-        });
+      hls.levels.forEach((level, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = level.height 
+          ? level.height + "p"
+          : Math.round(level.bitrate/1000) + " kbps";
 
-        video.play();
+        qualitySelect.appendChild(option);
       });
 
-      // Change quality manually
-      qualitySelect.addEventListener("change", function () {
-        const selectedLevel = parseInt(this.value);
-        hls.currentLevel = selectedLevel;
-      });
+      video.play();
+    });
 
-    } 
-    else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      // Safari native HLS fallback
-      video.src = videoSrc;
-      video.addEventListener("loadedmetadata", function () {
-        video.play();
-      });
-      alert("Manual quality selection not supported in Safari native mode.");
-    } 
-    else {
-      alert("HLS not supported in this browser.");
-    }
-  </script>
+    qualitySelect.addEventListener("change", function() {
+      hls.currentLevel = parseInt(this.value);
+    });
+
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    video.src = src;
+    video.play();
+  } else {
+    alert("HLS not supported");
+  }
+</script>
 
 </body>
 </html>
