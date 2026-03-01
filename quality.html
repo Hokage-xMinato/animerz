@@ -3,81 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HLS Blob Quality Player</title>
+    <title>Ultimate HLS Blob Player</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .video-container { width: 100%; max-width: 800px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        video { width: 100%; display: block; }
-        .controls { margin-top: 20px; display: flex; gap: 10px; }
-        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; background: #333; color: white; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #444; }
-        button.active { background: #007bff; }
-        .info { margin-top: 15px; font-size: 0.9em; color: #888; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f0f; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 900px; background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        input { width: 80%; padding: 12px; border-radius: 5px; border: 1px solid #333; background: #111; color: #00ff00; margin-bottom: 10px; font-family: monospace; }
+        .video-box { width: 100%; background: black; aspect-ratio: 16/9; margin: 20px 0; border-radius: 8px; overflow: hidden; }
+        video { width: 100%; height: 100%; }
+        .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        button { padding: 10px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; background: #333; color: white; transition: 0.3s; }
+        button:hover { background: #444; transform: translateY(-2px); }
+        button.active { background: #007bff; box-shadow: 0 0 15px rgba(0,123,255,0.5); }
+        .status { margin-top: 10px; font-size: 0.85em; color: #888; }
     </style>
 </head>
 <body>
 
-    <h2>HLS Quality Selector (Blob Method)</h2>
-
-    <div class="video-container">
-        <video id="my-video" controls autoplay playsinline></video>
+<div class="container">
+    <h2>Dynamic HLS Quality Switcher</h2>
+    
+    <input type="text" id="masterUrl" placeholder="Paste master.m3u8 link here..." 
+           value="https://ca.netmagcdn.com:2228/hls-playback/.../master.m3u8">
+    
+    <div class="video-box">
+        <video id="player" controls autoplay playsinline></video>
     </div>
 
     <div class="controls">
-        <button onclick="setQuality('f1', this)" id="btn-1080">1080p</button>
-        <button onclick="setQuality('f2', this)" id="btn-720">720p</button>
-        <button onclick="setQuality('f3', this)" id="btn-360">360p</button>
+        <button onclick="changeQuality('f1', this)">1080p (Full HD)</button>
+        <button onclick="changeQuality('f2', this)">720p (HD)</button>
+        <button onclick="changeQuality('f3', this)">360p (SD)</button>
     </div>
+    
+    <div class="status" id="statusLog">Ready. Paste a link and select quality.</div>
+</div>
 
-    <div class="info" id="status">Status: Ready. Select a quality to begin.</div>
+<script>
+    const video = document.getElementById('player');
+    const statusLog = document.getElementById('statusLog');
+    let activeBlob = null;
 
-    <script>
-        const video = document.getElementById('my-video');
-        const status = document.getElementById('status');
+    function changeQuality(qualityCode, btn) {
+        const inputUrl = document.getElementById('masterUrl').value.trim();
         
-        // --- CONFIGURATION ---
-        // This is your base URL (everything before 'master.m3u8')
-        const baseUrl = "https://dl.netmagcdn.com:2228/hls-playback/f7aea34d2bbe09b962858c9fefd4600b7f6dc326a95edd1cf5cb2075981004af85abcf2724596b251b7cd0cc21f2b885629ac97169e705f07a71c7c05ae50c0664b7244fe208cd7c2f16571ac0316680de41e5ef0b8f5ba5180c1ef2ceca0e623ee3a4b65f3820bae02c8cb738a51032955480ea41dec7f94794ecc80d5698b6059eca151ed955706531168763eae625/master.m3u8";
-        
-        let currentBlobUrl = null;
+        if (!inputUrl.includes('master.m3u8')) {
+            alert("Please paste a valid master.m3u8 URL");
+            return;
+        }
 
-        function setQuality(qualityCode, btnElement) {
-            // 1. Clean up old Blob to save memory
-            if (currentBlobUrl) {
-                URL.revokeObjectURL(currentBlobUrl);
-            }
+        // 1. Extract the Base URL by removing 'master.m3u8'
+        const baseUrl = inputUrl.replace('master.m3u8', '');
 
-            // 2. Map codes to resolutions for the manifest
-            const resMap = { 'f1': '1920x1080', 'f2': '1280x720', 'f3': '640x360' };
-            const bandwidthMap = { 'f1': '1159248', 'f2': '612610', 'f3': '306353' };
-
-            // 3. Construct the "Mini-Master" Manifest content
-            // We point the index file to the ABSOLUTE URL on the CDN
-            const manifestContent = `#EXTM3U
+        // 2. Build the specialized Manifest
+        // Using f1/f2/f3 logic from your specific CDN structure
+        const manifestText = `#EXTM3U
 #EXT-X-VERSION:3
-#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthMap[qualityCode]},RESOLUTION=${resMap[qualityCode]}
+#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1920x1080
 ${baseUrl}index-${qualityCode}-v1-a1.m3u8`;
 
-            // 4. Create the Blob
-            const blob = new Blob([manifestContent], { type: 'application/vnd.apple.mpegurl' });
-            currentBlobUrl = URL.createObjectURL(blob);
+        // 3. Clean up memory
+        if (activeBlob) URL.revokeObjectURL(activeBlob);
 
-            // 5. Apply to video tag
-            const currentTime = video.currentTime; // Save current position
-            video.src = currentBlobUrl;
-            
-            // Re-sync playback time after loading
-            video.onloadedmetadata = () => {
-                video.currentTime = currentTime;
-                video.play();
-            };
+        // 4. Create Blob URL
+        const blob = new Blob([manifestText], { type: 'application/x-mpegURL' });
+        activeBlob = URL.createObjectURL(blob);
 
-            // UI Updates
-            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            btnElement.classList.add('active');
-            status.innerText = `Status: Playing ${resMap[qualityCode]} via Blob URL`;
-            console.log("Active Blob:", currentBlobUrl);
-        }
-    </script>
+        // 5. Playback with position sync
+        const currentTime = video.currentTime;
+        video.src = activeBlob;
+        
+        video.onloadedmetadata = () => {
+            video.currentTime = currentTime;
+            video.play().catch(e => console.log("Autoplay blocked or error:", e));
+        };
+
+        // UI Feedback
+        document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        statusLog.innerText = `Currently Streaming: ${qualityCode} via Blob Context`;
+    }
+</script>
+
 </body>
 </html>
