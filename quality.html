@@ -1,54 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Simple M3U8 Player</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <style>
-    body {
-      margin: 0;
-      background: black;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      color: white;
-      font-family: Arial;
-    }
-    video {
-      width: 90%;
-      max-width: 1000px;
-      height: auto;
-    }
-    select {
-      margin-top: 15px;
-      padding: 6px 10px;
-      font-size: 16px;
-      background: #111;
-      color: white;
-      border: 1px solid #444;
-    }
-  </style>
-</head>
-<body>
-
-<video id="video" controls autoplay></video>
-<select id="quality" style="display:none;">
-  <option value="-1">Auto</option>
-</select>
-
 <script>
-  <script>
   const params = new URLSearchParams(window.location.search);
   const videoSrc = params.get("url");
   const video = document.getElementById("video");
-
-  // Create selector dynamically
-  const qualitySelect = document.createElement("select");
-  qualitySelect.style.marginTop = "15px";
-  qualitySelect.style.padding = "6px";
-  document.body.appendChild(qualitySelect);
 
   if (!videoSrc) {
     alert("No ?url= parameter provided");
@@ -57,49 +10,71 @@
 
   if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = videoSrc;
+    video.play().catch(() => {});
   } 
   else if (Hls.isSupported()) {
+
     const hls = new Hls({
-      debug: false
+      enableWorker: true,
+      lowLatencyMode: false
     });
 
-    hls.loadSource(videoSrc);
     hls.attachMedia(video);
 
-    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+    hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+      console.log("Media attached");
+      hls.loadSource(videoSrc);
+    });
 
-      console.log("Levels detected:", hls.levels);
+    hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+      console.log("Manifest parsed");
+      console.log("Levels:", hls.levels);
 
-      // Always clear
-      qualitySelect.innerHTML = "";
+      // Create selector
+      const select = document.createElement("select");
+      select.style.marginTop = "15px";
+      document.body.appendChild(select);
 
-      // Add Auto option
-      const autoOption = document.createElement("option");
-      autoOption.value = -1;
-      autoOption.textContent = "Auto";
-      qualitySelect.appendChild(autoOption);
+      const auto = document.createElement("option");
+      auto.value = -1;
+      auto.textContent = "Auto";
+      select.appendChild(auto);
 
-      // Add all levels
       hls.levels.forEach((level, index) => {
         const option = document.createElement("option");
         option.value = index;
         option.textContent = level.height + "p";
-        qualitySelect.appendChild(option);
+        select.appendChild(option);
       });
 
-      video.play();
+      select.addEventListener("change", function () {
+        hls.currentLevel = parseInt(this.value);
+      });
+
+      video.play().catch(() => {});
     });
 
-    qualitySelect.addEventListener("change", function () {
-      hls.currentLevel = parseInt(this.value);
+    // VERY IMPORTANT — error logging
+    hls.on(Hls.Events.ERROR, function (event, data) {
+      console.error("HLS error:", data);
+
+      if (data.fatal) {
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            hls.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            hls.recoverMediaError();
+            break;
+          default:
+            hls.destroy();
+            break;
+        }
+      }
     });
 
   } 
   else {
-    alert("HLS not supported in this browser.");
+    alert("HLS not supported.");
   }
 </script>
-</script>
-
-</body>
-</html>
