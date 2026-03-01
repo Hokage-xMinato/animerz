@@ -1,100 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fixed Manual Quality Player</title>
+    <title>HLS Blob Quality Player</title>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .wrapper { width: 100%; max-width: 800px; }
-        video { width: 100%; border-radius: 8px; background: #111; border: 1px solid #333; }
-        textarea { width: 100%; height: 100px; background: #222; color: #0f0; border: 1px solid #444; margin: 10px 0; padding: 10px; box-sizing: border-box; }
-        .controls { margin-top: 10px; display: none; }
-        select { width: 100%; padding: 12px; font-size: 16px; background: #333; color: #fff; border: 1px solid #555; }
-        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #status { font-size: 12px; color: #888; margin-top: 10px; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .video-container { width: 100%; max-width: 800px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        video { width: 100%; display: block; }
+        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; background: #333; color: white; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #444; }
+        button.active { background: #007bff; }
+        .info { margin-top: 15px; font-size: 0.9em; color: #888; }
     </style>
 </head>
 <body>
 
-<div class="wrapper">
-    <video id="video" controls autoplay playsinline></video>
-    
-    <div id="setup">
-        <p>Paste the #EXTM3U text here to fix the broken quality links:</p>
-        <textarea id="m3u8Text" placeholder="#EXTM3U..."></textarea>
-        <button onclick="fixAndPlay()">Fix & Unlock Qualities</button>
+    <h2>HLS Quality Selector (Blob Method)</h2>
+
+    <div class="video-container">
+        <video id="my-video" controls autoplay playsinline></video>
     </div>
 
-    <div class="controls" id="controls">
-        <label>Select Quality:</label>
-        <select id="qualitySelect"></select>
-        <div id="status">Ready to switch.</div>
+    <div class="controls">
+        <button onclick="setQuality('f1', this)" id="btn-1080">1080p</button>
+        <button onclick="setQuality('f2', this)" id="btn-720">720p</button>
+        <button onclick="setQuality('f3', this)" id="btn-360">360p</button>
     </div>
-</div>
 
-<script>
-    const video = document.getElementById('video');
-    const selector = document.getElementById('qualitySelect');
-    const status = document.getElementById('status');
+    <div class="info" id="status">Status: Ready. Select a quality to begin.</div>
 
-    const params = new URLSearchParams(window.location.search);
-    const masterUrl = params.get("url");
-
-    if (masterUrl) {
-        video.src = masterUrl; // Play auto initially
-    }
-
-    function fixAndPlay() {
-        const text = document.getElementById('m3u8Text').value;
-        const lines = text.split('\n');
+    <script>
+        const video = document.getElementById('my-video');
+        const status = document.getElementById('status');
         
-        // --- THE FIX: GET THE BASE URL ---
-        // Takes "https://site.com/hls/master.m3u8" 
-        // and returns "https://site.com/hls/"
-        const baseDir = masterUrl.substring(0, masterUrl.lastIndexOf('/') + 1);
+        // --- CONFIGURATION ---
+        // This is your base URL (everything before 'master.m3u8')
+        const baseUrl = "https://dl.netmagcdn.com:2228/hls-playback/f7aea34d2bbe09b962858c9fefd4600b7f6dc326a95edd1cf5cb2075981004af85abcf2724596b251b7cd0cc21f2b885629ac97169e705f07a71c7c05ae50c0664b7244fe208cd7c2f16571ac0316680de41e5ef0b8f5ba5180c1ef2ceca0e623ee3a4b65f3820bae02c8cb738a51032955480ea41dec7f94794ecc80d5698b6059eca151ed955706531168763eae625/master.m3u8";
         
-        selector.innerHTML = '';
-        selector.add(new Option("Auto (Adaptive)", masterUrl));
+        let currentBlobUrl = null;
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (line.includes('#EXT-X-STREAM-INF')) {
-                // Find the next line that is the URL
-                let subUrl = "";
-                for (let j = i + 1; j < lines.length; j++) {
-                    if (lines[j].trim() && !lines[j].startsWith('#')) {
-                        subUrl = lines[j].trim();
-                        break;
-                    }
-                }
-
-                if (subUrl) {
-                    // --- GLUE THE BASE URL TO THE FILENAME ---
-                    const finalUrl = subUrl.startsWith('http') ? subUrl : baseDir + subUrl;
-                    
-                    const resMatch = line.match(/RESOLUTION=(\d+x\d+)/);
-                    const label = resMatch ? resMatch[1].split('x')[1] + 'p' : "Manual";
-
-                    selector.add(new Option(label, finalUrl));
-                }
+        function setQuality(qualityCode, btnElement) {
+            // 1. Clean up old Blob to save memory
+            if (currentBlobUrl) {
+                URL.revokeObjectURL(currentBlobUrl);
             }
+
+            // 2. Map codes to resolutions for the manifest
+            const resMap = { 'f1': '1920x1080', 'f2': '1280x720', 'f3': '640x360' };
+            const bandwidthMap = { 'f1': '1159248', 'f2': '612610', 'f3': '306353' };
+
+            // 3. Construct the "Mini-Master" Manifest content
+            // We point the index file to the ABSOLUTE URL on the CDN
+            const manifestContent = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-STREAM-INF:BANDWIDTH=${bandwidthMap[qualityCode]},RESOLUTION=${resMap[qualityCode]}
+${baseUrl}index-${qualityCode}-v1-a1.m3u8`;
+
+            // 4. Create the Blob
+            const blob = new Blob([manifestContent], { type: 'application/vnd.apple.mpegurl' });
+            currentBlobUrl = URL.createObjectURL(blob);
+
+            // 5. Apply to video tag
+            const currentTime = video.currentTime; // Save current position
+            video.src = currentBlobUrl;
+            
+            // Re-sync playback time after loading
+            video.onloadedmetadata = () => {
+                video.currentTime = currentTime;
+                video.play();
+            };
+
+            // UI Updates
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            status.innerText = `Status: Playing ${resMap[qualityCode]} via Blob URL`;
+            console.log("Active Blob:", currentBlobUrl);
         }
-
-        document.getElementById('setup').style.display = 'none';
-        document.getElementById('controls').style.display = 'block';
-        status.innerText = "Links Repaired. You can now switch qualities.";
-    }
-
-    selector.onchange = () => {
-        const time = video.currentTime;
-        const paused = video.paused;
-        video.src = selector.value;
-        video.currentTime = time;
-        if (!paused) video.play();
-        status.innerText = "Playing: " + selector.options[selector.selectedIndex].text;
-    };
-</script>
-
+    </script>
 </body>
 </html>
