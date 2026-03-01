@@ -1,80 +1,70 @@
-<script>
-  const params = new URLSearchParams(window.location.search);
-  const videoSrc = params.get("url");
-  const video = document.getElementById("video");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HLS Quality Selector</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #1a1a1a; color: white; }
+        .video-container { width: 80%; max-width: 800px; margin-top: 20px; }
+        video { width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .controls { margin-top: 15px; background: #333; padding: 10px; border-radius: 5px; }
+        select { padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
 
-  if (!videoSrc) {
-    alert("No ?url= parameter provided");
-    throw new Error("Missing url parameter");
-  }
+    <h2>HLS Player with Quality Control</h2>
 
-  if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = videoSrc;
-    video.play().catch(() => {});
-  } 
-  else if (Hls.isSupported()) {
+    <div class="video-container">
+        <video id="video" controls></video>
+        
+        <div class="controls">
+            <label for="qualitySelect">Quality: </label>
+            <select id="qualitySelect">
+                <option value="-1">Auto (Adaptive)</option>
+            </select>
+        </div>
+    </div>
 
-    const hls = new Hls({
-      enableWorker: true,
-      lowLatencyMode: false
-    });
+    <script>
+        const video = document.getElementById('video');
+        const qualitySelect = document.getElementById('qualitySelect');
+        // Example M3U8 link with multiple qualities (Mux test stream)
+        const videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
 
-    hls.attachMedia(video);
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(videoSrc);
+            hls.attachMedia(video);
 
-    hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-      console.log("Media attached");
-      hls.loadSource(videoSrc);
-    });
+            // 1. Listen for when the manifest is parsed to see available qualities
+            hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+                // data.levels contains the different quality levels
+                data.levels.forEach((level, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    // Show resolution (e.g., 1080p) or bitrate
+                    const label = level.height ? `${level.height}p` : `${Math.round(level.bitrate / 1000)} kbps`;
+                    option.text = label;
+                    qualitySelect.appendChild(option);
+                });
+                
+                video.play();
+            });
 
-    hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
-      console.log("Manifest parsed");
-      console.log("Levels:", hls.levels);
+            // 2. Handle Manual Quality Change
+            qualitySelect.addEventListener('change', () => {
+                // -1 is "Auto", otherwise it's the index of the level
+                hls.currentLevel = parseInt(qualitySelect.value);
+                console.log("Switching quality to level:", hls.currentLevel);
+            });
 
-      // Create selector
-      const select = document.createElement("select");
-      select.style.marginTop = "15px";
-      document.body.appendChild(select);
-
-      const auto = document.createElement("option");
-      auto.value = -1;
-      auto.textContent = "Auto";
-      select.appendChild(auto);
-
-      hls.levels.forEach((level, index) => {
-        const option = document.createElement("option");
-        option.value = index;
-        option.textContent = level.height + "p";
-        select.appendChild(option);
-      });
-
-      select.addEventListener("change", function () {
-        hls.currentLevel = parseInt(this.value);
-      });
-
-      video.play().catch(() => {});
-    });
-
-    // VERY IMPORTANT — error logging
-    hls.on(Hls.Events.ERROR, function (event, data) {
-      console.error("HLS error:", data);
-
-      if (data.fatal) {
-        switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
-            hls.startLoad();
-            break;
-          case Hls.ErrorTypes.MEDIA_ERROR:
-            hls.recoverMediaError();
-            break;
-          default:
-            hls.destroy();
-            break;
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // For Safari (Native HLS support), manual selection is usually handled by the OS
+            video.src = videoSrc;
+            video.addEventListener('loadedmetadata', () => video.play());
         }
-      }
-    });
-
-  } 
-  else {
-    alert("HLS not supported.");
-  }
-</script>
+    </script>
+</body>
+</html>
