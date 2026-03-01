@@ -39,10 +39,16 @@
 </select>
 
 <script>
+  <script>
   const params = new URLSearchParams(window.location.search);
   const videoSrc = params.get("url");
   const video = document.getElementById("video");
-  const qualitySelect = document.getElementById("quality");
+
+  // Create selector dynamically
+  const qualitySelect = document.createElement("select");
+  qualitySelect.style.marginTop = "15px";
+  qualitySelect.style.padding = "6px";
+  document.body.appendChild(qualitySelect);
 
   if (!videoSrc) {
     alert("No ?url= parameter provided");
@@ -50,40 +56,40 @@
   }
 
   if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari native HLS
     video.src = videoSrc;
-    // Safari does not allow manual quality control
   } 
   else if (Hls.isSupported()) {
-    const hls = new Hls();
+    const hls = new Hls({
+      debug: false
+    });
 
     hls.loadSource(videoSrc);
     hls.attachMedia(video);
 
     hls.on(Hls.Events.MANIFEST_PARSED, function () {
 
-      // If only one level, no need to show selector
-      if (hls.levels.length <= 1) return;
+      console.log("Levels detected:", hls.levels);
 
-      qualitySelect.style.display = "block";
+      // Always clear
+      qualitySelect.innerHTML = "";
 
-      // Add quality options
+      // Add Auto option
+      const autoOption = document.createElement("option");
+      autoOption.value = -1;
+      autoOption.textContent = "Auto";
+      qualitySelect.appendChild(autoOption);
+
+      // Add all levels
       hls.levels.forEach((level, index) => {
         const option = document.createElement("option");
         option.value = index;
-
-        const label = level.height
-          ? level.height + "p"
-          : Math.round(level.bitrate / 1000) + " kbps";
-
-        option.textContent = label;
+        option.textContent = level.height + "p";
         qualitySelect.appendChild(option);
       });
 
       video.play();
     });
 
-    // Manual switching
     qualitySelect.addEventListener("change", function () {
       hls.currentLevel = parseInt(this.value);
     });
@@ -92,6 +98,7 @@
   else {
     alert("HLS not supported in this browser.");
   }
+</script>
 </script>
 
 </body>
