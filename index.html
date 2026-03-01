@@ -573,26 +573,40 @@ function init(cfg){
   //   For fixed-quality blob URLs hls.js also works since inner URLs are absolute.
 
   function setNativeSrc(srcUrl, seekTo=0, autoPlay=true){
+    vid.preload = 'auto';
     vid.src = srcUrl;
     vid.load();
     if(seekTo>0){
       vid.addEventListener('loadedmetadata',()=>{vid.currentTime=seekTo},{once:true});
     }
-    vid.addEventListener('canplay',()=>{spin.style.display='none';},{once:true});
     if(autoPlay) vid.play().catch(()=>{});
+    // spinner is managed by the global smart spinner above
   }
 
   function loadHlsJs(srcUrl, seekTo=0, autoPlay=true){
     hls = new Hls({
       enableWorker: true,
       startPosition: seekTo,
-      maxBufferLength: 60,
-      maxMaxBufferLength: 120,
-      maxBufferSize: 60*1000*1000,
-      highBufferWatchdogPeriod: 4,
+      // Aggressively preload — buffer up to 90s ahead, keep up to 180s in memory
+      maxBufferLength: 90,
+      maxMaxBufferLength: 180,
+      maxBufferSize: 120*1000*1000,      // 120 MB
+      maxBufferHole: 0.3,
+      highBufferWatchdogPeriod: 2,
+      nudgeOffset: 0.2,
       nudgeMaxRetry: 10,
+      // Start loading next segment immediately after current one arrives
+      lowLatencyMode: false,
+      progressive: true,
       fragLoadingTimeOut: 20000,
+      fragLoadingMaxRetry: 6,
+      fragLoadingRetryDelay: 500,
       manifestLoadingTimeOut: 20000,
+      manifestLoadingMaxRetry: 4,
+      levelLoadingTimeOut: 20000,
+      levelLoadingMaxRetry: 4,
+      // Keep back-buffer so seeking backward is instant
+      backBufferLength: 90,
     });
     hls.loadSource(srcUrl);
     hls.attachMedia(vid);
@@ -746,10 +760,56 @@ function init(cfg){
 
   vid.addEventListener('play',()=>setPlayIcon(false));
   vid.addEventListener('pause',()=>setPlayIcon(true));
-  vid.addEventListener('waiting',()=>spin.style.display='block');
-  vid.addEventListener('playing',()=>spin.style.display='none');
-  vid.addEventListener('canplay',()=>spin.style.display='none');
-  vid.addEventListener('stalled',()=>spin.style.display='block');
+
+  // ── SPINNER: smart debounced logic ───────────────
+  // Never let stalled/waiting show spinner if we already have enough buffer.
+  // Use a short delay before showing so brief network blips don't flash the spinner.
+  let spinShowT=null, spinHideT=null;
+
+  function hasEnoughBuffer(){
+    try{
+      for(let i=0;i<vid.buffered.length;i++){
+        if(vid.buffered.start(i)<=vid.currentTime+0.1 &&
+           vid.buffered.end(i)>vid.currentTime+1.5) return true;
+      }
+    }catch(e){}
+    return false;
+  }
+
+  function showSpinner(){
+    clearTimeout(spinHideT);
+    // Only show after 400ms delay — avoids flash for quick seeks/segment joins
+    spinShowT=setTimeout(()=>{
+      // Double-check: if playing fine now, don't show
+      if(!vid.paused && vid.readyState>=3) return;
+      spin.style.display='block';
+    }, 400);
+  }
+
+  function hideSpinner(){
+    clearTimeout(spinShowT);
+    // Small delay before hiding so it doesn't flicker on/off
+    spinHideT=setTimeout(()=>{ spin.style.display='none'; }, 80);
+  }
+
+  vid.addEventListener('waiting', ()=>{
+    if(!hasEnoughBuffer()) showSpinner();
+  });
+  vid.addEventListener('stalled', ()=>{
+    // stalled fires often on segment boundaries — only care if truly stuck
+    if(!hasEnoughBuffer()) showSpinner();
+  });
+  vid.addEventListener('playing',  hideSpinner);
+  vid.addEventListener('canplay',  hideSpinner);
+  vid.addEventListener('canplaythrough', hideSpinner);
+  vid.addEventListener('seeked',   ()=>{ if(vid.readyState>=3) hideSpinner(); });
+  vid.addEventListener('progress', ()=>{ if(!vid.paused && hasEnoughBuffer()) hideSpinner(); });
+  // Fallback: poll every 500ms and hide if video is actually running
+  setInterval(()=>{
+    if(!vid.paused && !vid.ended && vid.readyState>=3 && spin.style.display!=='none'){
+      hideSpinner();
+    }
+  }, 500);
 
   function setPlayIcon(paused){
     if(paused){
