@@ -1,71 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M3U8 Manual Quality Fix</title>
+    <title>Fixed Manual Quality Player</title>
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .player-card { width: 100%; max-width: 800px; background: #1a1a1a; padding: 15px; border-radius: 12px; border: 1px solid #333; }
-        video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; }
-        textarea { width: 100%; height: 80px; background: #222; color: #0f0; border: 1px solid #444; margin: 10px 0; padding: 10px; box-sizing: border-box; font-family: monospace; font-size: 12px; }
-        .controls { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
-        select { padding: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; font-size: 16px; width: 100%; }
-        button { padding: 10px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        #status { font-size: 12px; color: #888; margin-top: 5px; }
+        .wrapper { width: 100%; max-width: 800px; }
+        video { width: 100%; border-radius: 8px; background: #111; border: 1px solid #333; }
+        textarea { width: 100%; height: 100px; background: #222; color: #0f0; border: 1px solid #444; margin: 10px 0; padding: 10px; box-sizing: border-box; }
+        .controls { margin-top: 10px; display: none; }
+        select { width: 100%; padding: 12px; font-size: 16px; background: #333; color: #fff; border: 1px solid #555; }
+        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #status { font-size: 12px; color: #888; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="player-card">
+<div class="wrapper">
     <video id="video" controls autoplay playsinline></video>
-
-    <div id="setup-area">
-        <p style="margin: 0; font-size: 14px;">Paste the #EXTM3U text you see in your browser:</p>
-        <textarea id="m3u8Input" placeholder="#EXTM3U..."></textarea>
-        <button onclick="processManifest()">Unlock Qualities</button>
+    
+    <div id="setup">
+        <p>Paste the #EXTM3U text here to fix the broken quality links:</p>
+        <textarea id="m3u8Text" placeholder="#EXTM3U..."></textarea>
+        <button onclick="fixAndPlay()">Fix & Unlock Qualities</button>
     </div>
 
-    <div class="controls" id="player-controls" style="display:none;">
+    <div class="controls" id="controls">
         <label>Select Quality:</label>
         <select id="qualitySelect"></select>
-        <div id="status">Playing Auto Mode...</div>
+        <div id="status">Ready to switch.</div>
     </div>
 </div>
 
 <script>
     const video = document.getElementById('video');
     const selector = document.getElementById('qualitySelect');
-    const input = document.getElementById('m3u8Input');
-    
-    // Get the base URL from the address bar (?url=...)
+    const status = document.getElementById('status');
+
     const params = new URLSearchParams(window.location.search);
     const masterUrl = params.get("url");
 
     if (masterUrl) {
-        video.src = masterUrl; // Start playing immediately
+        video.src = masterUrl; // Play auto initially
     }
 
-    function processManifest() {
-        const text = input.textContent || input.value;
+    function fixAndPlay() {
+        const text = document.getElementById('m3u8Text').value;
         const lines = text.split('\n');
         
-        // Find the base directory (everything before the last /)
-        // Example: https://site.com/hls/master.m3u8 -> https://site.com/hls/
+        // --- THE FIX: GET THE BASE URL ---
+        // Takes "https://site.com/hls/master.m3u8" 
+        // and returns "https://site.com/hls/"
         const baseDir = masterUrl.substring(0, masterUrl.lastIndexOf('/') + 1);
         
         selector.innerHTML = '';
-        
-        // 1. Add the "Auto" option
-        const autoOpt = new Option("Auto (Adaptive)", masterUrl);
-        selector.add(autoOpt);
+        selector.add(new Option("Auto (Adaptive)", masterUrl));
 
-        // 2. Parse the text for qualities
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
-            
             if (line.includes('#EXT-X-STREAM-INF')) {
-                // The next line that doesn't start with # is our URL
+                // Find the next line that is the URL
                 let subUrl = "";
                 for (let j = i + 1; j < lines.length; j++) {
                     if (lines[j].trim() && !lines[j].startsWith('#')) {
@@ -75,34 +70,29 @@
                 }
 
                 if (subUrl) {
-                    // Fix the relative path
-                    const fullUrl = subUrl.startsWith('http') ? subUrl : baseDir + subUrl;
+                    // --- GLUE THE BASE URL TO THE FILENAME ---
+                    const finalUrl = subUrl.startsWith('http') ? subUrl : baseDir + subUrl;
                     
-                    // Get Resolution
                     const resMatch = line.match(/RESOLUTION=(\d+x\d+)/);
                     const label = resMatch ? resMatch[1].split('x')[1] + 'p' : "Manual";
 
-                    const opt = new Option(label, fullUrl);
-                    selector.add(opt);
+                    selector.add(new Option(label, finalUrl));
                 }
             }
         }
 
-        // Show controls, hide input
-        document.getElementById('setup-area').style.display = 'none';
-        document.getElementById('player-controls').style.display = 'block';
-        document.getElementById('status').innerText = `Found ${selector.options.length - 1} qualities.`;
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('controls').style.display = 'block';
+        status.innerText = "Links Repaired. You can now switch qualities.";
     }
 
     selector.onchange = () => {
-        const currentTime = video.currentTime;
-        const isPaused = video.paused;
-        
+        const time = video.currentTime;
+        const paused = video.paused;
         video.src = selector.value;
-        video.currentTime = currentTime;
-        
-        if (!isPaused) video.play();
-        document.getElementById('status').innerText = "Switched to: " + selector.options[selector.selectedIndex].text;
+        video.currentTime = time;
+        if (!paused) video.play();
+        status.innerText = "Playing: " + selector.options[selector.selectedIndex].text;
     };
 </script>
 
