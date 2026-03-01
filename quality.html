@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro M3U8 Player</title>
+    <title>Hybrid Proxy Player</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 10px; }
-        .wrapper { width: 100%; max-width: 900px; }
-        video { width: 100%; aspect-ratio: 16/9; background: #111; border-radius: 8px; }
-        .controls { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: #1a1a1a; padding: 15px; border-radius: 8px; }
-        select { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 5px; flex-grow: 1; }
-        #log { margin-top: 10px; font-size: 11px; color: #666; font-family: monospace; width: 100%; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .wrapper { width: 100%; max-width: 800px; }
+        video { width: 100%; border-radius: 8px; background: #111; box-shadow: 0 0 20px rgba(0,255,0,0.1); }
+        .controls { margin-top: 15px; background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        select { width: 100%; padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 5px; font-size: 16px; }
+        #status { margin-top: 10px; font-size: 11px; color: #0f0; font-family: monospace; }
     </style>
 </head>
 <body>
@@ -20,96 +20,96 @@
     <video id="video" controls autoplay playsinline></video>
     
     <div class="controls">
-        <label>Quality:</label>
-        <select id="qualitySelect"><option>Loading...</option></select>
+        <label style="display:block; margin-bottom:5px;">Select Quality (Native Switch):</label>
+        <select id="qualitySelect">
+            <option>Fetching Qualities...</option>
+        </select>
     </div>
 
-    <div id="log">Status: Waiting for URL...</div>
+    <div id="status">Status: Waiting for URL...</div>
 </div>
 
 <script>
     const video = document.getElementById('video');
-    const qualitySelect = document.getElementById('qualitySelect');
-    const logBox = document.getElementById('log');
+    const selector = document.getElementById('qualitySelect');
+    const status = document.getElementById('status');
 
     const params = new URLSearchParams(window.location.search);
     const videoSrc = params.get("url");
-    const subsParam = params.get("subs");
-    const namesParam = params.get("names");
+    const proxy = "https://corsproxy.io/?";
 
-    function log(msg) { logBox.innerHTML = `> ${msg}<br>` + logBox.innerHTML; }
+    function log(msg) { status.innerHTML = `> ${msg}<br>` + status.innerHTML; }
 
-    // --- SUBTITLE NEUTRALIZER (Blob Method) ---
-    async function loadSubs(url, label) {
-        try {
-            log(`Fetching subtitle: ${label}`);
-            const resp = await fetch(url);
-            if (!resp.ok) throw new Error("Fetch failed");
-            const text = await resp.text();
-            const blob = new Blob([text], { type: 'text/vtt' });
-            const blobUrl = URL.createObjectURL(blob);
-            
-            const track = document.createElement("track");
-            track.kind = "subtitles";
-            track.label = label;
-            track.src = blobUrl;
-            track.srclang = "en";
-            video.appendChild(track);
-            log(`Success: Subtitle ${label} injected.`);
-        } catch (e) {
-            log(`Error: Subtitle ${label} blocked or missing.`);
-        }
+    if (!videoSrc) {
+        log("ERROR: No ?url= provided.");
+    } else {
+        log("Starting Hybrid Loader...");
+        initHybridPlayer();
     }
 
-    if (videoSrc) {
-        if (Hls.isSupported()) {
-            log("Initialising Hls.js engine...");
-            const hls = new Hls({
-                xhrSetup: function(xhr) { xhr.withCredentials = false; }
+    function initHybridPlayer() {
+        // We create an invisible HLS instance just to parse the file
+        const hls = new Hls();
+        
+        // Use proxy ONLY for the manifest parsing
+        const proxiedUrl = proxy + encodeURIComponent(videoSrc);
+        log("Parsing manifest via proxy...");
+
+        hls.loadSource(proxiedUrl);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            log("Manifest Parsed! Found " + data.levels.length + " qualities.");
+            
+            selector.innerHTML = ''; // Clear loading message
+
+            // Add the Original 'Auto' (Master) link
+            const autoOpt = document.createElement('option');
+            autoOpt.value = videoSrc;
+            autoOpt.text = "Auto (Adaptive)";
+            selector.appendChild(autoOpt);
+
+            // Add each specific quality level
+            data.levels.forEach((level) => {
+                const opt = document.createElement('option');
+                // The actual URL for this specific quality
+                opt.value = level.url[0]; 
+                const label = level.height ? `${level.height}p` : `${Math.round(level.bitrate/1000)}k`;
+                opt.text = label;
+                selector.appendChild(opt);
             });
 
-            hls.loadSource(videoSrc);
-            hls.attachMedia(video);
+            // Start playing the Master URL natively
+            playNative(videoSrc);
+        });
 
-            hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                log("Manifest Parsed. Qualities: " + data.levels.length);
-                
-                // Build Quality UI
-                qualitySelect.innerHTML = '<option value="-1">Auto (ABR)</option>';
-                data.levels.forEach((level, index) => {
-                    const opt = document.createElement('option');
-                    opt.value = index;
-                    const res = level.height ? `${level.height}p` : `${Math.round(level.bitrate/1000)}k`;
-                    opt.text = res;
-                    qualitySelect.appendChild(opt);
-                });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) log("PARSE ERROR: " + data.details + ". Check if proxy is down.");
+        });
 
-                // Load Subtitles after manifest
-                if (subsParam) {
-                    const urls = subsParam.split(",");
-                    const names = namesParam ? namesParam.split(",") : [];
-                    urls.forEach((u, i) => loadSubs(u, names[i] || `Track ${i+1}`));
-                }
-                
-                video.play().catch(() => log("Autoplay blocked. Tap Play."));
+        // Handle the Manual Switch
+        selector.onchange = () => {
+            const selectedUrl = selector.value;
+            log("Switching Native Source to: " + selector.options[selector.selectedIndex].text);
+            
+            // Save current time so video doesn't restart from 0
+            const currentTime = video.currentTime;
+            const isPaused = video.paused;
+
+            playNative(selectedUrl);
+
+            video.addEventListener('loadedmetadata', function onMetadata() {
+                video.currentTime = currentTime;
+                if (!isPaused) video.play();
+                video.removeEventListener('loadedmetadata', onMetadata);
             });
+        };
+    }
 
-            qualitySelect.onchange = () => {
-                hls.currentLevel = parseInt(qualitySelect.value);
-                log("Manual Quality Set: " + qualitySelect.options[qualitySelect.selectedIndex].text);
-            };
-
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                if (data.fatal) log("FATAL: " + data.details);
-            });
-
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Safari/iOS Fallback
-            video.src = videoSrc;
-            log("Using Native Fallback (No Quality Selector Available)");
-        }
-    } else {
-        log("ERROR: No ?url= provided.");
+    function playNative(url) {
+        // Here we play it NATIVELY without Hls.js
+        video.src = url;
+        video.load();
+        video.play().catch(() => log("Autoplay prevented."));
     }
 </script>
 </body>
