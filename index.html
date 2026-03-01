@@ -415,62 +415,58 @@ function init(cfg){
   if(isNaN(introStart))$('rsi').style.display='none';
   if(isNaN(outroStart))$('rso').style.display='none';
 
-  // ── QUALITY LEVELS (blob master.m3u8 approach) ─────
+  // ── QUALITY LEVELS ───────────────────────────────
+  // Strategy:
+  //   Native HLS browser (Safari etc): video.src for everything — blob manifest
+  //     for fixed quality, real master URL for Auto.
+  //   Non-native (Chrome etc): hls.js for Auto (real master URL),
+  //     native video.src blob for fixed quality (blob manifests work natively
+  //     because the browser resolves the absolute stream URL inside them).
   const QUALITIES=[
-    {label:'1080p', file:'index-f1-v1-a1.m3u8', bw:'BANDWIDTH=5000000,RESOLUTION=1920x1080', badge:'HD'},
-    {label:'720p',  file:'index-f2-v1-a1.m3u8', bw:'BANDWIDTH=2800000,RESOLUTION=1280x720',  badge:''},
-    {label:'360p',  file:'index-f3-v1-a1.m3u8', bw:'BANDWIDTH=1159248,RESOLUTION=640x360',   badge:''},
+    {label:'1080p', code:'f1', bw:'5000000', res:'1920x1080', badge:'HD'},
+    {label:'720p',  code:'f2', bw:'2800000', res:'1280x720',  badge:''},
+    {label:'360p',  code:'f3', bw:'1159248', res:'640x360',   badge:''},
   ];
   let currentQualityIdx=-1; // -1 = Auto
-  let blobUrl=null;
+  let activeBlobUrl=null;
 
-  // Replace the last m3u8 filename in the token URL
-  function buildStreamUrl(file){
-    return url.replace(/[^/?#]+\.m3u8(\?[^#]*)?(?:#.*)?$/, file);
+  const nativeHLS = !!vid.canPlayType('application/vnd.apple.mpegurl');
+
+  // Strip the last filename from the URL to get base path
+  function getBaseUrl(){
+    return url.replace(/[^/?#]+\.m3u8(\?[^#]*)?(?:#.*)?$/, '');
   }
 
-  // Blob master with ONLY one quality (locked)
-  function makeSingleQualityBlob(idx){
-    const q=QUALITIES[idx];
-    const m3u8=[
+  // Build a single-stream blob manifest pointing at one quality
+  function makeBlobManifest(q){
+    const streamUrl = getBaseUrl() + 'index-' + q.code + '-v1-a1.m3u8';
+    const txt = [
       '#EXTM3U',
-      `#EXT-X-STREAM-INF:PROGRAM-ID=1,${q.bw},CODECS="avc1.640032,mp4a.40.2"`,
-      buildStreamUrl(q.file),
+      '#EXT-X-VERSION:3',
+      '#EXT-X-STREAM-INF:BANDWIDTH=' + q.bw + ',RESOLUTION=' + q.res,
+      streamUrl,
       ''
     ].join('\n');
-    return new Blob([m3u8],{type:'application/vnd.apple.mpegurl'});
-  }
-
-  // Blob master with ALL qualities (Auto — hls.js picks adaptive)
-  function makeAutoBlob(){
-    const lines=['#EXTM3U'];
-    QUALITIES.forEach(q=>{
-      lines.push(`#EXT-X-STREAM-INF:PROGRAM-ID=1,${q.bw},CODECS="avc1.640032,mp4a.40.2"`);
-      lines.push(buildStreamUrl(q.file));
-    });
-    return new Blob([lines.join('\n')+'\n'],{type:'application/vnd.apple.mpegurl'});
+    return new Blob([txt], {type:'application/x-mpegURL'});
   }
 
   function revokeBlobUrl(){
-    if(blobUrl){URL.revokeObjectURL(blobUrl);blobUrl=null;}
+    if(activeBlobUrl){URL.revokeObjectURL(activeBlobUrl);activeBlobUrl=null;}
   }
 
-  // Build quality rows in settings
   function buildQualUI(){
     ql.innerHTML='';
-    // Auto row (default active)
     const autoEl=document.createElement('div');
     autoEl.className='srow on';
     autoEl.dataset.qi='-1';
     autoEl.innerHTML='<span>Auto <span class="srow-sub">Adaptive</span></span><div class="dot"></div>';
     autoEl.addEventListener('click',()=>switchQuality(-1,autoEl));
     ql.appendChild(autoEl);
-
     QUALITIES.forEach((q,i)=>{
       const el=document.createElement('div');
       el.className='srow';
       el.dataset.qi=i;
-      el.innerHTML=`<span>${q.label}${q.badge?`<span class="srow-sub qual-badge">${q.badge}</span>`:''}</span><div class="dot"></div>`;
+      el.innerHTML='<span>'+q.label+(q.badge?'<span class="srow-sub qual-badge">'+q.badge+'</span>':'')+'</span><div class="dot"></div>';
       el.addEventListener('click',()=>switchQuality(i,el));
       ql.appendChild(el);
     });
@@ -486,14 +482,36 @@ function init(cfg){
     const wasPlaying=!vid.paused;
     spin.style.display='block';
 
-    if(hls){hls.destroy();hls=null;}
-    revokeBlobUrl();
+    if(idx===-1){
+      // ── AUTO ─────────────────────────────────────────
+      // Always use the real master URL so ABR works properly
+      revokeBlobUrl();
+      if(hls){hls.destroy();hls=null;}
+      if(nativeHLS){
+        // Native: just point src at master
+        setNativeSrc(url, pos, wasPlaying);
+      } else {
+        loadHlsJs(url, pos, wasPlaying);
+      }
+    } else {
+      // ── FIXED QUALITY ────────────────────────────────
+      // Use blob manifest + native video.src regardless of browser.
+      // This works because the absolute stream URL inside the blob is fetched
+      // by the browser's own HLS engine (native) or hls.js reads the src
+      // which resolves correctly.
+      if(hls){hls.destroy();hls=null;}
+      revokeBlobUrl();
+      const blob = makeBlobManifest(QUALITIES[idx]);
+      activeBlobUrl = URL.createObjectURL(blob);
+      if(nativeHLS){
+        setNativeSrc(activeBlobUrl, pos, wasPlaying);
+      } else {
+        // hls.js can load blob: URLs when the inner URLs are absolute
+        loadHlsJs(activeBlobUrl, pos, wasPlaying);
+      }
+    }
 
-    const blob=idx===-1 ? makeAutoBlob() : makeSingleQualityBlob(idx);
-    blobUrl=URL.createObjectURL(blob);
-
-    loadHLS(blobUrl, pos, wasPlaying);
-    flash(idx===-1 ? 'Quality: Auto' : `Quality: ${QUALITIES[idx].label}`);
+    flash(idx===-1 ? 'Quality: Auto' : 'Quality: '+QUALITIES[idx].label);
     closeSettings();
   }
 
@@ -549,46 +567,60 @@ function init(cfg){
   settingsPanel.addEventListener('click',e=>e.stopPropagation());
   window.addEventListener('resize',()=>{if(settingsPanel.classList.contains('open'))positionPanel()});
 
-  // ── HLS LOADER ────────────────────────────────────
-  function loadHLS(srcUrl, seekTo=0, autoPlay=true){
-    if(Hls.isSupported()){
-      hls=new Hls({
-        enableWorker:true,
-        startPosition:seekTo,
-        maxBufferLength:60,
-        maxMaxBufferLength:120,
-        maxBufferSize:60*1000*1000,
-        highBufferWatchdogPeriod:4,
-        nudgeMaxRetry:10,
-        fragLoadingTimeOut:20000,
-        manifestLoadingTimeOut:20000,
-      });
-      hls.loadSource(srcUrl);
-      hls.attachMedia(vid);
-      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-        if(seekTo>0)vid.currentTime=seekTo;
-        if(autoPlay)vid.play().catch(()=>{});
-        spin.style.display='none';
-      });
-      hls.on(Hls.Events.ERROR,(_,d)=>{
-        if(d.fatal){console.error('HLS fatal:',d.type,d.details);spin.style.display='none';}
-      });
-    } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
-      vid.src=srcUrl;
-      if(seekTo>0)vid.addEventListener('loadedmetadata',()=>{vid.currentTime=seekTo},{once:true});
-      if(autoPlay)vid.play().catch(()=>{});
-    } else {
+  // ── PLAYBACK ENGINE ───────────────────────────────
+  // Native HLS (Safari, iOS): use video.src directly — no hls.js needed.
+  // Non-native (Chrome, Firefox): use hls.js for the master/auto URL.
+  //   For fixed-quality blob URLs hls.js also works since inner URLs are absolute.
+
+  function setNativeSrc(srcUrl, seekTo=0, autoPlay=true){
+    vid.src = srcUrl;
+    vid.load();
+    if(seekTo>0){
+      vid.addEventListener('loadedmetadata',()=>{vid.currentTime=seekTo},{once:true});
+    }
+    vid.addEventListener('canplay',()=>{spin.style.display='none';},{once:true});
+    if(autoPlay) vid.play().catch(()=>{});
+  }
+
+  function loadHlsJs(srcUrl, seekTo=0, autoPlay=true){
+    hls = new Hls({
+      enableWorker: true,
+      startPosition: seekTo,
+      maxBufferLength: 60,
+      maxMaxBufferLength: 120,
+      maxBufferSize: 60*1000*1000,
+      highBufferWatchdogPeriod: 4,
+      nudgeMaxRetry: 10,
+      fragLoadingTimeOut: 20000,
+      manifestLoadingTimeOut: 20000,
+    });
+    hls.loadSource(srcUrl);
+    hls.attachMedia(vid);
+    hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
+      if(seekTo>0) vid.currentTime = seekTo;
+      if(autoPlay) vid.play().catch(()=>{});
+      spin.style.display='none';
+    });
+    hls.on(Hls.Events.ERROR, (_,d)=>{
+      if(d.fatal){console.error('HLS fatal:',d.type,d.details);spin.style.display='none';}
+    });
+  }
+
+  function startPlayback(){
+    if(!Hls.isSupported() && !nativeHLS){
       showInv('HLS not supported in this browser.');
       shell.style.display='none';
+      return;
+    }
+    // Auto mode on load
+    if(nativeHLS){
+      setNativeSrc(url);
+    } else {
+      loadHlsJs(url);
     }
   }
 
-  // Start in Auto mode (blob master with all qualities)
-  {
-    const blob=makeAutoBlob();
-    blobUrl=URL.createObjectURL(blob);
-    loadHLS(blobUrl);
-  }
+  startPlayback();
 
   // ── SPEED ─────────────────────────────────────────
   [0.25,0.5,0.75,1,1.25,1.5,1.75,2].forEach(s=>{
