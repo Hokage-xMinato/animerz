@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleek HLS Player</title>
+
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+    <style>
+        /* Full screen dark mode aesthetic */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #0f111a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .player-wrapper {
+            width: 100%;
+            max-width: 1000px;
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Customizing Plyr Theme - Cyan/Purple Gradient Vibe */
+        :root {
+            --plyr-color-main: #00d4ff; 
+            --plyr-video-background: #000;
+            --plyr-menu-background: rgba(15, 17, 26, 0.95);
+            --plyr-menu-color: #e0e0e0;
+            --plyr-tooltip-background: #7000ff;
+            --plyr-tooltip-color: #ffffff;
+        }
+
+        .plyr__progress input[type="range"]::-webkit-slider-runnable-track {
+            background-image: linear-gradient(90deg, #00d4ff, #7000ff) !important;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+        }
+
+        #empty-state {
+            position: absolute;
+            color: white;
+            text-align: center;
+            font-size: 1.2rem;
+            display: none;
+        }
+        #empty-state span { color: #00d4ff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="player-wrapper">
+        <video id="video-player" controls crossorigin playsinline></video>
+    </div>
+
+    <div id="empty-state">
+        <p>Waiting for a stream...<br>Add <span>?video=YOUR_M3U8_URL</span> to the address bar.</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video-player');
+            const emptyState = document.getElementById('empty-state');
+            
+            // 1. Grab parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoUrl = urlParams.get('video');
+            const subUrl = urlParams.get('sub');
+            const subName = urlParams.get('name') || 'Subtitles';
+
+            if (!videoUrl) {
+                document.querySelector('.player-wrapper').style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            // 2. Load Single Subtitle (if provided)
+            if (subUrl) {
+                const track = document.createElement('track');
+                track.kind = 'captions';
+                track.label = subName;
+                track.src = subUrl;
+                track.srclang = 'en'; 
+                track.default = true; // Auto-enable if it exists
+                video.appendChild(track);
+            }
+
+            // 3. Setup HLS and extract qualities
+            const plyrOptions = {
+                controls: [
+                    'play-large', 'play', 'progress', 'current-time', 'duration', 
+                    'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+                ],
+                settings: ['captions', 'quality', 'speed'],
+                captions: { active: !!subUrl, update: true }
+            };
+
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(videoUrl);
+                
+                // This triggers when HLS reads the m3u8 playlist
+                hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+                    
+                    // Map the available heights (e.g., 1080, 720, 480)
+                    const availableQualities = hls.levels.map((l) => l.height);
+                    availableQualities.unshift(0); // 0 acts as our "Auto" setting
+
+                    // Inject qualities into Plyr dynamically
+                    plyrOptions.quality = {
+                        default: 0, 
+                        options: availableQualities,
+                        forced: true,
+                        onChange: (newQuality) => {
+                            if (newQuality === 0) {
+                                hls.currentLevel = -1; // Tells HLS.js to use Auto bitrate
+                            } else {
+                                // Find the matching level index and force it
+                                hls.levels.forEach((level, levelIndex) => {
+                                    if (level.height === newQuality) {
+                                        hls.currentLevel = levelIndex;
+                                    }
+                                });
+                            }
+                        }
+                    };
+
+                    // Initialize Plyr only after we know the qualities
+                    new Plyr(video, plyrOptions);
+                });
+
+                hls.attachMedia(video);
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Fallback for Safari which supports HLS natively 
+                video.src = videoUrl;
+                new Plyr(video, plyrOptions);
+            }
+        });
+    </script>
+</body>
+</html>
