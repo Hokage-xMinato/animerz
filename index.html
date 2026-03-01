@@ -8,481 +8,489 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --accent: #e8ff5a;
-    --accent-dim: rgba(232,255,90,0.18);
-    --bg: #0a0a0c;
-    --glass: rgba(255,255,255,0.04);
-    --glass-border: rgba(255,255,255,0.08);
-    --text: #f0f0f0;
-    --text-dim: rgba(240,240,240,0.45);
-    --control-h: 48px;
-    --radius: 12px;
-    --intro-color: #5af0e8;
-    --outro-color: #f05a8a;
-    --bar-h: 4px;
-    --bar-h-hover: 7px;
-    --trans: 0.22s cubic-bezier(0.4,0,0.2,1);
-  }
+:root {
+  --accent: #e8ff5a;
+  --accent-dim: rgba(232,255,90,0.18);
+  --bg: #0a0a0c;
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --text: #f0f0f0;
+  --text-dim: rgba(240,240,240,0.45);
+  --control-h: 48px;
+  --radius: 12px;
+  --intro-color: #5af0e8;
+  --outro-color: #f05a8a;
+  --bar-h: 4px;
+  --bar-h-hover: 7px;
+  --trans: 0.22s cubic-bezier(0.4,0,0.2,1);
+}
 
-  html, body {
-    width: 100%; height: 100%;
-    background: var(--bg);
-    font-family: 'DM Sans', sans-serif;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
 
-  #player-wrap {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    cursor: none;
-  }
+/* ── INVALID TOKEN SCREEN ── */
+#invalid-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 40px;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 9999;
+}
 
-  #player-wrap.show-cursor { cursor: default; }
+.invalid-icon {
+  width: 64px; height: 64px;
+  border-radius: 16px;
+  background: rgba(240,90,90,0.12);
+  border: 1px solid rgba(240,90,90,0.25);
+  display: flex; align-items: center; justify-content: center;
+}
+.invalid-icon svg { width: 28px; height: 28px; stroke: #f05a5a; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+#invalid-screen h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+#invalid-screen p { font-size: 14px; color: var(--text-dim); max-width: 280px; line-height: 1.6; }
 
-  #video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-  }
+/* ── PLAYER ── */
+#player-wrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: none;
+}
 
-  /* ── OVERLAY ── */
-  #overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    background: linear-gradient(
-      to bottom,
-      rgba(0,0,0,0) 40%,
-      rgba(0,0,0,0.55) 75%,
-      rgba(0,0,0,0.85) 100%
-    );
-    opacity: 0;
-    transition: opacity var(--trans);
-    pointer-events: none;
-  }
+#player-wrap.show-cursor { cursor: default; }
 
-  #overlay.visible { opacity: 1; pointer-events: all; }
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
 
-  /* ── SKIP INTRO BUTTON ── */
-  #skip-btn {
-    position: absolute;
-    bottom: 110px;
-    right: 32px;
-    background: rgba(10,10,12,0.75);
-    border: 1.5px solid var(--accent);
-    color: var(--accent);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    padding: 10px 22px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: none;
-    backdrop-filter: blur(10px);
-    transition: background var(--trans), transform var(--trans);
-    text-transform: uppercase;
-  }
-  #skip-btn:hover { background: var(--accent); color: #000; transform: scale(1.04); }
+/* ── OVERLAY ── */
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 40%,
+    rgba(0,0,0,0.55) 75%,
+    rgba(0,0,0,0.85) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--trans);
+  pointer-events: none;
+}
 
-  /* ── CONTROLS CONTAINER ── */
-  #controls {
-    padding: 0 20px 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    position: relative;
-    z-index: 10;
-  }
+#overlay.visible { opacity: 1; pointer-events: all; }
 
-  /* ── PROGRESS BAR ── */
-  #prog-wrap {
-    position: relative;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-  }
+/* ── SKIP BUTTON ── */
+#skip-btn {
+  position: absolute;
+  bottom: 110px;
+  right: 32px;
+  background: rgba(10,10,12,0.75);
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 10px 22px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: none;
+  backdrop-filter: blur(10px);
+  transition: background var(--trans), color var(--trans), transform var(--trans);
+  text-transform: uppercase;
+  z-index: 20;
+}
+#skip-btn:hover { background: var(--accent); color: #000; transform: scale(1.04); }
 
-  #prog-track {
-    position: relative;
-    width: 100%;
-    height: var(--bar-h);
-    background: rgba(255,255,255,0.15);
-    border-radius: 999px;
-    overflow: visible;
-    transition: height var(--trans);
-  }
+/* ── CONTROLS ── */
+#controls {
+  padding: 0 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  z-index: 10;
+}
 
-  #prog-wrap:hover #prog-track { height: var(--bar-h-hover); }
+/* ── PROGRESS BAR ── */
+#prog-wrap {
+  position: relative;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 0;
+}
 
-  #prog-buf {
-    position: absolute;
-    top: 0; left: 0; height: 100%;
-    background: rgba(255,255,255,0.22);
-    border-radius: 999px;
-    pointer-events: none;
-  }
+#prog-track {
+  position: relative;
+  width: 100%;
+  height: var(--bar-h);
+  background: rgba(255,255,255,0.15);
+  border-radius: 999px;
+  overflow: visible;
+  transition: height var(--trans);
+}
 
-  #prog-fill {
-    position: absolute;
-    top: 0; left: 0; height: 100%;
-    background: var(--accent);
-    border-radius: 999px;
-    pointer-events: none;
-    transition: width 0.08s linear;
-  }
+#prog-wrap:hover #prog-track { height: var(--bar-h-hover); }
 
-  /* Intro / Outro markers */
-  .seg-marker {
-    position: absolute;
-    top: 0; height: 100%;
-    border-radius: 999px;
-    pointer-events: none;
-    opacity: 0.55;
-  }
-  .seg-marker.intro { background: var(--intro-color); }
-  .seg-marker.outro { background: var(--outro-color); }
+#prog-buf {
+  position: absolute;
+  top: 0; left: 0; height: 100%;
+  background: rgba(255,255,255,0.22);
+  border-radius: 999px;
+  pointer-events: none;
+}
 
-  #prog-thumb {
-    position: absolute;
-    top: 50%;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: #fff;
-    transform: translate(-50%, -50%) scale(0);
-    pointer-events: none;
-    transition: transform var(--trans);
-    box-shadow: 0 0 0 3px rgba(232,255,90,0.35);
-  }
+#prog-fill {
+  position: absolute;
+  top: 0; left: 0; height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  pointer-events: none;
+  transition: width 0.08s linear;
+}
 
-  #prog-wrap:hover #prog-thumb { transform: translate(-50%,-50%) scale(1); }
+.seg-marker {
+  position: absolute;
+  top: 0; height: 100%;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0.65;
+  z-index: 2;
+}
+.seg-marker.intro { background: var(--intro-color); }
+.seg-marker.outro { background: var(--outro-color); }
 
-  /* Hover time tooltip */
-  #time-tooltip {
-    position: absolute;
-    bottom: calc(100% + 10px);
-    transform: translateX(-50%);
-    background: rgba(10,10,12,0.9);
-    border: 1px solid var(--glass-border);
-    color: #fff;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    padding: 4px 9px;
-    border-radius: 5px;
-    pointer-events: none;
-    opacity: 0;
-    white-space: nowrap;
-    backdrop-filter: blur(8px);
-    transition: opacity 0.12s;
-  }
+.seg-label {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 5;
+}
+#prog-wrap:hover .seg-label { opacity: 1; }
+.seg-label.intro { background: var(--intro-color); color: #000; }
+.seg-label.outro { background: var(--outro-color); color: #fff; }
 
-  #prog-wrap:hover #time-tooltip { opacity: 1; }
+#prog-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  transition: transform var(--trans);
+  box-shadow: 0 0 0 3px rgba(232,255,90,0.35);
+  z-index: 3;
+}
+#prog-wrap:hover #prog-thumb { transform: translate(-50%,-50%) scale(1); }
 
-  /* Segment labels */
-  .seg-label {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    padding: 2px 7px;
-    border-radius: 4px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s;
-    transform: translateX(-50%);
-    white-space: nowrap;
-  }
-  #prog-wrap:hover .seg-label { opacity: 1; }
-  .seg-label.intro { background: var(--intro-color); color: #000; }
-  .seg-label.outro { background: var(--outro-color); color: #fff; }
+#time-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  transform: translateX(-50%);
+  background: rgba(10,10,12,0.92);
+  border: 1px solid var(--glass-border);
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  pointer-events: none;
+  opacity: 0;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.12s;
+  z-index: 10;
+}
+#prog-wrap:hover #time-tooltip { opacity: 1; }
 
-  /* ── BOTTOM CONTROLS ROW ── */
-  #ctrl-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+/* ── BOTTOM ROW ── */
+#ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
-  .ctrl-btn {
-    background: none;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    width: 40px; height: 40px;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    transition: background var(--trans), color var(--trans), transform 0.12s;
-    flex-shrink: 0;
-    position: relative;
-  }
-  .ctrl-btn:hover { background: var(--glass); color: #fff; }
-  .ctrl-btn:active { transform: scale(0.9); }
-  .ctrl-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .ctrl-btn.active { color: var(--accent); }
+.ctrl-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--trans), color var(--trans), transform 0.12s;
+  flex-shrink: 0;
+  position: relative;
+}
+.ctrl-btn:hover { background: var(--glass); color: #fff; }
+.ctrl-btn:active { transform: scale(0.9); }
+.ctrl-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ctrl-btn.active { color: var(--accent); }
+#play-btn svg { width: 24px; height: 24px; }
 
-  #play-btn svg { width: 24px; height: 24px; stroke-width: 1.8; }
+#vol-group { display: flex; align-items: center; gap: 4px; }
 
-  #vol-group {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
+#vol-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 0; height: 3px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.25);
+  outline: none; cursor: pointer;
+  overflow: hidden;
+  transition: width var(--trans), opacity var(--trans);
+  opacity: 0;
+}
+#vol-group:hover #vol-slider,
+#vol-group:focus-within #vol-slider { width: 72px; opacity: 1; }
+#vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%; background: #fff; cursor: pointer;
+  box-shadow: -80px 0 0 76px var(--accent);
+}
 
-  #vol-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 0;
-    height: 3px;
-    border-radius: 99px;
-    background: rgba(255,255,255,0.25);
-    outline: none;
-    cursor: pointer;
-    overflow: hidden;
-    transition: width var(--trans), opacity var(--trans);
-    opacity: 0;
-  }
-  #vol-group:hover #vol-slider, #vol-group:focus-within #vol-slider {
-    width: 72px;
-    opacity: 1;
-  }
-  #vol-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    background: #fff;
-    cursor: pointer;
-    box-shadow: -80px 0 0 76px var(--accent);
-  }
+#time-display {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  margin: 0 4px;
+  white-space: nowrap;
+  user-select: none;
+}
 
-  #time-display {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    color: var(--text-dim);
-    letter-spacing: 0.04em;
-    margin: 0 4px;
-    white-space: nowrap;
-    user-select: none;
-  }
+#spacer { flex: 1; }
 
-  #spacer { flex: 1; }
+/* ── POPUPS ── */
+.popup {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  min-width: 230px;
+  background: rgba(12,12,16,0.97);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(28px);
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 100;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.75);
+  animation: popUp 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+.popup.open { display: flex; }
 
-  /* ── POPUPS (settings, captions) ── */
-  .popup {
-    position: absolute;
-    bottom: calc(100% + 12px);
-    right: 0;
-    min-width: 220px;
-    background: rgba(14,14,18,0.96);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    backdrop-filter: blur(24px);
-    padding: 6px;
-    display: none;
-    flex-direction: column;
-    gap: 2px;
-    z-index: 100;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-    animation: popUp 0.18s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  .popup.open { display: flex; }
+@keyframes popUp {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
-  @keyframes popUp {
-    from { opacity: 0; transform: translateY(8px) scale(0.96); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
+.popup-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 6px 10px 4px;
+}
 
-  .popup-section {
-    padding: 4px 2px 2px;
-  }
+.popup-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 4px 8px;
+}
 
-  .popup-title {
-    font-size: 9.5px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    padding: 4px 10px 6px;
-  }
+.popup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  transition: background var(--trans);
+  gap: 12px;
+  user-select: none;
+}
+.popup-item:hover { background: var(--glass); }
+.popup-item.active { color: var(--accent); }
 
-  .popup-divider {
-    height: 1px;
-    background: var(--glass-border);
-    margin: 4px 8px;
-  }
+.q-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  opacity: 0;
+}
+.popup-item.active .q-dot { opacity: 1; }
 
-  .popup-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 7px 12px;
-    border-radius: 7px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 400;
-    transition: background var(--trans);
-    gap: 12px;
-  }
-  .popup-item:hover { background: var(--glass); }
-  .popup-item.active { color: var(--accent); }
-  .popup-item .badge {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: 'DM Mono', monospace;
-  }
+.toggle {
+  position: relative; width: 34px; height: 18px; flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.15);
+  transition: background var(--trans);
+  cursor: pointer;
+}
+.toggle input:checked + .toggle-track { background: var(--accent); }
+.toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%; background: #fff;
+  transition: left var(--trans);
+  pointer-events: none;
+}
+.toggle input:checked ~ .toggle-thumb { left: 18px; }
 
-  /* Toggle switch */
-  .toggle {
-    position: relative;
-    width: 34px; height: 18px;
-    flex-shrink: 0;
-  }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .toggle-track {
-    position: absolute;
-    inset: 0;
-    border-radius: 99px;
-    background: rgba(255,255,255,0.15);
-    transition: background var(--trans);
-    cursor: pointer;
-  }
-  .toggle input:checked + .toggle-track { background: var(--accent); }
-  .toggle-thumb {
-    position: absolute;
-    top: 2px; left: 2px;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: #fff;
-    transition: left var(--trans);
-    pointer-events: none;
-  }
-  .toggle input:checked ~ .toggle-thumb { left: 18px; }
+#captions-popup { right: auto; left: 0; min-width: 180px; }
 
-  /* Captions popup - left-aligned */
-  #captions-popup { right: auto; left: 0; min-width: 180px; }
+/* ── CENTER PLAY FLASH ── */
+#center-play {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%) scale(0);
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  transition: transform 0.12s, opacity 0.25s;
+  opacity: 0;
+}
+#center-play svg { width: 28px; height: 28px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* Center play indicator */
-  #center-play {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%) scale(0);
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(8px);
-    border: 1.5px solid rgba(255,255,255,0.2);
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: none;
-    transition: transform 0.12s, opacity 0.25s;
-    opacity: 0;
-  }
-  #center-play svg { width: 28px; height: 28px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* ── SPINNER ── */
+#spinner {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent);
+  animation: spin 0.75s linear infinite;
+  display: none; pointer-events: none;
+}
+@keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
 
-  /* Loading spinner */
-  #spinner {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    border: 2.5px solid rgba(255,255,255,0.1);
-    border-top-color: var(--accent);
-    animation: spin 0.75s linear infinite;
-    display: none;
-    pointer-events: none;
-  }
-  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+/* ── CAPTIONS DISPLAY ── */
+#captions-display {
+  position: absolute;
+  bottom: 90px; left: 50%; transform: translateX(-50%);
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: clamp(14px, 2.5vw, 22px);
+  font-weight: 500;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  padding: 6px 16px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 6px;
+  max-width: 80%;
+  line-height: 1.5;
+  pointer-events: none;
+  display: none;
+  backdrop-filter: blur(4px);
+  z-index: 5;
+}
 
-  /* Captions display */
-  #captions-display {
-    position: absolute;
-    bottom: 90px;
-    left: 50%; transform: translateX(-50%);
-    text-align: center;
-    font-family: 'DM Sans', sans-serif;
-    font-size: clamp(14px, 2.5vw, 22px);
-    font-weight: 500;
-    color: #fff;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.6);
-    padding: 6px 14px;
-    background: rgba(0,0,0,0.55);
-    border-radius: 6px;
-    max-width: 80%;
-    line-height: 1.5;
-    pointer-events: none;
-    display: none;
-    backdrop-filter: blur(4px);
-  }
+/* ── KBD FLASH ── */
+#kbd-flash {
+  position: absolute; top: 18px; right: 24px;
+  background: rgba(14,14,18,0.88);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+#kbd-flash.show { opacity: 1; }
 
-  /* Keyboard shortcut flash */
-  #kbd-flash {
-    position: absolute;
-    top: 18px; right: 24px;
-    background: rgba(14,14,18,0.85);
-    border: 1px solid var(--glass-border);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    padding: 6px 14px;
-    border-radius: 6px;
-    backdrop-filter: blur(8px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-  }
-  #kbd-flash.show { opacity: 1; }
-
-  /* Quality badges */
-  .quality-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    flex-shrink: 0;
-  }
-
-  /* Scrollable popup sections */
-  .popup-scroll {
-    max-height: 200px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.1) transparent;
-  }
+/* Popup scroll */
+.popup-scroll {
+  max-height: 190px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
 </style>
 </head>
 <body>
-<div id="player-wrap">
-  <video id="video" playsinline></video>
 
+<!-- Invalid Token Screen -->
+<div id="invalid-screen">
+  <div class="invalid-icon">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  </div>
+  <h1>Invalid Token</h1>
+  <p id="invalid-msg">The token provided is missing or could not be decrypted. Please generate a valid token.</p>
+</div>
+
+<!-- Player -->
+<div id="player-wrap" style="display:none;">
+  <video id="video" playsinline></video>
   <div id="spinner"></div>
   <div id="center-play">
     <svg id="center-icon" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
   </div>
   <div id="captions-display"></div>
-  <div id="skip-btn">Skip Intro →</div>
+  <div id="skip-btn">Skip →</div>
   <div id="kbd-flash"></div>
 
   <div id="overlay">
     <div id="controls">
 
-      <!-- Progress Bar -->
       <div id="prog-wrap">
         <div id="time-tooltip">0:00</div>
         <div id="prog-track">
@@ -492,51 +500,51 @@
         </div>
       </div>
 
-      <!-- Control Row -->
       <div id="ctrl-row">
 
-        <!-- Play/Pause -->
         <button class="ctrl-btn" id="play-btn" title="Play/Pause (Space)">
           <svg id="play-icon" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
         </button>
 
-        <!-- Skip back -->
-        <button class="ctrl-btn" id="back-btn" title="Back 10s (←)">
-          <svg viewBox="0 0 24 24"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 .49-3.41"/><text x="9" y="15" font-size="7" fill="currentColor" stroke="none" font-family="DM Mono" font-weight="600">10</text></svg>
+        <button class="ctrl-btn" id="back-btn" title="Back 10s">
+          <svg viewBox="0 0 24 24">
+            <polyline points="1,4 1,10 7,10"/>
+            <path d="M3.51 15a9 9 0 1 0 .49-3.41"/>
+            <text x="9.5" y="15" font-size="6.5" fill="currentColor" stroke="none" font-family="DM Mono" font-weight="700">10</text>
+          </svg>
         </button>
 
-        <!-- Skip forward -->
-        <button class="ctrl-btn" id="fwd-btn" title="Forward 10s (→)">
-          <svg viewBox="0 0 24 24"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 1 1-.49-3.41"/><text x="6" y="15" font-size="7" fill="currentColor" stroke="none" font-family="DM Mono" font-weight="600">10</text></svg>
+        <button class="ctrl-btn" id="fwd-btn" title="Forward 10s">
+          <svg viewBox="0 0 24 24">
+            <polyline points="23,4 23,10 17,10"/>
+            <path d="M20.49 15a9 9 0 1 1-.49-3.41"/>
+            <text x="6" y="15" font-size="6.5" fill="currentColor" stroke="none" font-family="DM Mono" font-weight="700">10</text>
+          </svg>
         </button>
 
-        <!-- Volume -->
         <div id="vol-group">
           <button class="ctrl-btn" id="mute-btn" title="Mute (M)">
-            <svg id="vol-icon" viewBox="0 0 24 24">
-              <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/>
+            <svg viewBox="0 0 24 24">
+              <polygon id="vol-poly" points="11,5 6,9 2,9 2,15 6,15 11,19"/>
               <path id="vol-waves" d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
             </svg>
           </button>
           <input type="range" id="vol-slider" min="0" max="1" step="0.02" value="1">
         </div>
 
-        <!-- Time -->
         <div id="time-display">0:00 / 0:00</div>
-
         <div id="spacer"></div>
 
         <!-- Captions -->
         <div style="position:relative;">
-          <button class="ctrl-btn" id="captions-btn" title="Subtitles">
+          <button class="ctrl-btn" id="captions-btn" title="Subtitles" id="captions-btn-wrap">
             <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3"/><line x1="6" y1="10" x2="18" y2="10"/><line x1="6" y1="14" x2="13" y2="14"/></svg>
           </button>
           <div class="popup" id="captions-popup">
             <div class="popup-title">Subtitles</div>
             <div class="popup-scroll" id="captions-list">
-              <div class="popup-item" data-track="-1">
-                <span>Off</span>
-                <div class="quality-dot" id="cap-off-dot"></div>
+              <div class="popup-item active" data-track="-1">
+                <span>Off</span><div class="q-dot"></div>
               </div>
             </div>
           </div>
@@ -549,31 +557,25 @@
           </button>
           <div class="popup" id="settings-popup">
 
-            <!-- Quality -->
             <div class="popup-title">Quality</div>
             <div class="popup-scroll" id="quality-list">
               <div class="popup-item active" data-level="-1">
-                <span>Auto</span>
-                <div class="quality-dot" id="qual-auto-dot"></div>
+                <span>Auto</span><div class="q-dot"></div>
               </div>
             </div>
 
             <div class="popup-divider"></div>
 
-            <!-- Speed -->
             <div class="popup-title">Speed</div>
-            <div class="popup-scroll" id="speed-list">
-              <!-- filled by JS -->
-            </div>
+            <div class="popup-scroll" id="speed-list"></div>
 
             <div class="popup-divider"></div>
 
-            <!-- Options -->
             <div class="popup-title">Options</div>
 
-            <div class="popup-item" id="pip-item" style="cursor:pointer;">
+            <div class="popup-item" id="pip-item">
               <span>Picture-in-Picture</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="10" width="9" height="7" rx="1"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="10" width="9" height="7" rx="1"/></svg>
             </div>
 
             <div class="popup-item" id="skip-intro-item">
@@ -609,594 +611,467 @@
 
 <script>
 // ═══════════════════════════════════════════════
-//  PARAMS
+//  SHARED KEY (must match generator.html)
 // ═══════════════════════════════════════════════
-const p = new URLSearchParams(location.search);
-const videoSrc  = p.get('url');
-const subsParam  = p.get('subs');
-const namesParam = p.get('names');
-const introStart = parseFloat(p.get('introStart') ?? p.get('intro_start') ?? NaN);
-const introEnd   = parseFloat(p.get('introEnd')   ?? p.get('intro_end')   ?? NaN);
-const outroStart = parseFloat(p.get('outroStart') ?? p.get('outro_start') ?? NaN);
-const outroEnd   = parseFloat(p.get('outroEnd')   ?? p.get('outro_end')   ?? NaN);
+const KEY_HEX = 'a3f8c2e1b4d7f6a0c9e2b5d8f1a4c7e0b3d6f9a2c5e8b1d4f7a0c3e6b9d2f5a8';
 
-if (!videoSrc) {
-  document.body.innerHTML = '<p style="color:#f05a8a;font-family:DM Sans,sans-serif;padding:40px;font-size:18px;">⚠ No <code>?url=</code> parameter provided.</p>';
-  throw new Error('Missing url');
+function hexToBytes(hex) {
+  const b = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < b.length; i++) b[i] = parseInt(hex.substr(i*2, 2), 16);
+  return b;
+}
+
+async function getKey() {
+  return crypto.subtle.importKey('raw', hexToBytes(KEY_HEX), 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+
+async function decryptToken(token) {
+  const key = await getKey();
+  const raw = token.replace(/-/g,'+').replace(/_/g,'/');
+  const padded = raw + '=='.slice(0, (4 - raw.length % 4) % 4);
+  const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+  const iv = bytes.slice(0, 12);
+  const ct = bytes.slice(12);
+  const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return JSON.parse(new TextDecoder().decode(dec));
 }
 
 // ═══════════════════════════════════════════════
-//  ELEMENTS
+//  BOOTSTRAP – decrypt token then init player
 // ═══════════════════════════════════════════════
-const wrap        = document.getElementById('player-wrap');
-const video       = document.getElementById('video');
-const overlay     = document.getElementById('overlay');
-const playBtn     = document.getElementById('play-btn');
-const playIcon    = document.getElementById('play-icon');
-const centerPlay  = document.getElementById('center-play');
-const centerIcon  = document.getElementById('center-icon');
-const backBtn     = document.getElementById('back-btn');
-const fwdBtn      = document.getElementById('fwd-btn');
-const muteBtn     = document.getElementById('mute-btn');
-const volSlider   = document.getElementById('vol-slider');
-const volIcon     = document.getElementById('vol-icon');
-const timeDisp    = document.getElementById('time-display');
-const fsBtn       = document.getElementById('fs-btn');
-const fsIcon      = document.getElementById('fs-icon');
-const progWrap    = document.getElementById('prog-wrap');
-const progTrack   = document.getElementById('prog-track');
-const progFill    = document.getElementById('prog-fill');
-const progBuf     = document.getElementById('prog-buf');
-const progThumb   = document.getElementById('prog-thumb');
-const timeTooltip = document.getElementById('time-tooltip');
-const skipBtn     = document.getElementById('skip-btn');
-const spinner     = document.getElementById('spinner');
-const captDisplay = document.getElementById('captions-display');
-const captBtn     = document.getElementById('captions-btn');
-const captPopup   = document.getElementById('captions-popup');
-const captList    = document.getElementById('captions-list');
-const settBtn     = document.getElementById('settings-btn');
-const settPopup   = document.getElementById('settings-popup');
-const qualList    = document.getElementById('quality-list');
-const speedList   = document.getElementById('speed-list');
-const pipItem     = document.getElementById('pip-item');
-const skipIntroCk = document.getElementById('skip-intro-chk');
-const skipOutroCk = document.getElementById('skip-outro-chk');
-const kbdFlash    = document.getElementById('kbd-flash');
+const urlParams = new URLSearchParams(location.search);
+const tokenStr  = urlParams.get('token');
 
-// ═══════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════
-let hlsInstance = null;
-let duration = 0;
-let hideTimer = null;
-let introDone = false;
-let outroDone = false;
-let activeCapTrack = -1;
-let captionLines = [];
-let kbdTimer = null;
-let isDragging = false;
-let currentQuality = -1;
+const invalidScreen = document.getElementById('invalid-screen');
+const invalidMsg    = document.getElementById('invalid-msg');
+const playerWrap    = document.getElementById('player-wrap');
 
-// ═══════════════════════════════════════════════
-//  HLS SETUP
-// ═══════════════════════════════════════════════
-if (video.canPlayType('application/vnd.apple.mpegurl')) {
-  video.src = videoSrc;
-} else if (Hls.isSupported()) {
-  hlsInstance = new Hls({ enableWorker: true });
-  hlsInstance.loadSource(videoSrc);
-  hlsInstance.attachMedia(video);
-
-  hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-    buildQualityMenu(data.levels);
-    video.play().catch(() => {});
-  });
-
-  hlsInstance.on(Hls.Events.ERROR, (_, data) => {
-    if (data.fatal) console.error('HLS fatal error', data);
-  });
-} else {
-  alert('HLS is not supported in this browser.');
-}
-
-// ═══════════════════════════════════════════════
-//  QUALITY MENU
-// ═══════════════════════════════════════════════
-function buildQualityMenu(levels) {
-  // Clear existing (keep Auto)
-  qualList.innerHTML = '';
-
-  const autoItem = makeQualItem('Auto', -1, true);
-  qualList.appendChild(autoItem);
-
-  // Sort descending by height
-  const sorted = levels
-    .map((l, i) => ({ i, h: l.height || 0, w: l.width || 0, bw: l.bitrate || 0 }))
-    .sort((a, b) => b.h - a.h);
-
-  sorted.forEach(({ i, h, bw }) => {
-    const label = h ? `${h}p` : `${Math.round(bw/1000)}kbps`;
-    qualList.appendChild(makeQualItem(label, i, false));
-  });
-}
-
-function makeQualItem(label, level, isAuto) {
-  const el = document.createElement('div');
-  el.className = 'popup-item' + (isAuto ? ' active' : '');
-  el.dataset.level = level;
-  el.innerHTML = `<span>${label}</span>${isAuto ? '<div class="quality-dot" id="qual-active-dot"></div>' : ''}`;
-  el.addEventListener('click', () => setQuality(level, el, label));
-  return el;
-}
-
-function setQuality(level, el, label) {
-  currentQuality = level;
-  qualList.querySelectorAll('.popup-item').forEach(i => {
-    i.classList.remove('active');
-    const dot = i.querySelector('.quality-dot');
-    if (dot) dot.style.display = 'none';
-  });
-  el.classList.add('active');
-  let dot = el.querySelector('.quality-dot');
-  if (!dot) {
-    dot = document.createElement('div');
-    dot.className = 'quality-dot';
-    el.appendChild(dot);
+async function bootstrap() {
+  if (!tokenStr) {
+    showInvalid('No token parameter found in the URL.');
+    return;
   }
-  dot.style.display = '';
-  if (hlsInstance) hlsInstance.currentLevel = level;
-  flashKbd(label === 'Auto' ? 'Quality: Auto' : `Quality: ${label}`);
-}
-
-// ═══════════════════════════════════════════════
-//  SPEED MENU
-// ═══════════════════════════════════════════════
-const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-speeds.forEach(s => {
-  const el = document.createElement('div');
-  el.className = 'popup-item' + (s === 1 ? ' active' : '');
-  el.dataset.speed = s;
-  el.innerHTML = `<span>${s === 1 ? 'Normal' : s + '×'}</span>${s === 1 ? '<div class="quality-dot" id="speed-dot"></div>' : ''}`;
-  el.addEventListener('click', () => {
-    video.playbackRate = s;
-    speedList.querySelectorAll('.popup-item').forEach(i => {
-      i.classList.remove('active');
-      const dot = i.querySelector('.quality-dot');
-      if (dot) dot.remove();
-    });
-    el.classList.add('active');
-    const nd = document.createElement('div');
-    nd.className = 'quality-dot';
-    el.appendChild(nd);
-    flashKbd(`Speed: ${s === 1 ? 'Normal' : s + '×'}`);
-  });
-  speedList.appendChild(el);
-});
-
-// ═══════════════════════════════════════════════
-//  SUBTITLES LOADING
-// ═══════════════════════════════════════════════
-async function loadSub(url, label, index) {
   try {
-    const r = await fetch(url);
-    const text = await r.text();
-    const blob = new Blob([text], { type: 'text/vtt' });
-    const blobUrl = URL.createObjectURL(blob);
-    const track = document.createElement('track');
-    track.kind = 'subtitles';
-    track.label = label;
-    track.src = blobUrl;
-    track.srclang = 'und';
-    video.appendChild(track);
+    const cfg = await decryptToken(tokenStr);
+    if (!cfg || !cfg.url) {
+      showInvalid('Token is valid but contains no stream URL.');
+      return;
+    }
+    playerWrap.style.display = 'flex';
+    initPlayer(cfg);
+  } catch (e) {
+    showInvalid('Token could not be decrypted. It may be corrupted or from a different source.');
+  }
+}
 
-    // Add to captions menu
+function showInvalid(msg) {
+  invalidMsg.textContent = msg;
+  invalidScreen.style.display = 'flex';
+}
+
+bootstrap();
+
+// ═══════════════════════════════════════════════
+//  PLAYER INIT
+// ═══════════════════════════════════════════════
+function initPlayer(cfg) {
+  const {
+    url: videoSrc,
+    introStart = NaN, introEnd = NaN,
+    outroStart = NaN, outroEnd = NaN,
+    subs = [], names = []
+  } = cfg;
+
+  const video       = document.getElementById('video');
+  const overlay     = document.getElementById('overlay');
+  const playBtn     = document.getElementById('play-btn');
+  const playIcon    = document.getElementById('play-icon');
+  const centerPlay  = document.getElementById('center-play');
+  const centerIcon  = document.getElementById('center-icon');
+  const backBtn     = document.getElementById('back-btn');
+  const fwdBtn      = document.getElementById('fwd-btn');
+  const muteBtn     = document.getElementById('mute-btn');
+  const volSlider   = document.getElementById('vol-slider');
+  const timeDisp    = document.getElementById('time-display');
+  const fsBtn       = document.getElementById('fs-btn');
+  const fsIcon      = document.getElementById('fs-icon');
+  const progWrap    = document.getElementById('prog-wrap');
+  const progTrack   = document.getElementById('prog-track');
+  const progFill    = document.getElementById('prog-fill');
+  const progBuf     = document.getElementById('prog-buf');
+  const progThumb   = document.getElementById('prog-thumb');
+  const timeTooltip = document.getElementById('time-tooltip');
+  const skipBtn     = document.getElementById('skip-btn');
+  const spinner     = document.getElementById('spinner');
+  const captDisplay = document.getElementById('captions-display');
+  const captBtn     = document.getElementById('captions-btn');
+  const captPopup   = document.getElementById('captions-popup');
+  const captList    = document.getElementById('captions-list');
+  const settBtn     = document.getElementById('settings-btn');
+  const settPopup   = document.getElementById('settings-popup');
+  const qualList    = document.getElementById('quality-list');
+  const speedList   = document.getElementById('speed-list');
+  const pipItem     = document.getElementById('pip-item');
+  const skipIntroCk = document.getElementById('skip-intro-chk');
+  const skipOutroCk = document.getElementById('skip-outro-chk');
+  const kbdFlash    = document.getElementById('kbd-flash');
+
+  let hlsInstance = null;
+  let duration = 0;
+  let hideTimer = null;
+  let introDone = false, outroDone = false;
+  let activeCapTrack = -1;
+  let captionLines = [];
+  let kbdTimer = null;
+  let isDragging = false;
+
+  // Hide intro/outro toggle items if not provided
+  if (isNaN(introStart)) document.getElementById('skip-intro-item').style.display = 'none';
+  if (isNaN(outroStart)) document.getElementById('skip-outro-item').style.display = 'none';
+
+  // ── HLS ──
+  if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = videoSrc;
+    video.play().catch(() => {});
+  } else if (Hls.isSupported()) {
+    hlsInstance = new Hls({ enableWorker: true });
+    hlsInstance.loadSource(videoSrc);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+      buildQualityMenu(data.levels);
+      video.play().catch(() => {});
+    });
+    hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+      if (data.fatal) console.error('HLS error', data);
+    });
+  } else {
+    showInvalid('HLS is not supported in this browser.');
+    playerWrap.style.display = 'none';
+  }
+
+  // ── QUALITY ──
+  function buildQualityMenu(levels) {
+    qualList.innerHTML = '';
+    const auto = mkQualEl('Auto', -1, true);
+    qualList.appendChild(auto);
+    levels
+      .map((l,i) => ({ i, h: l.height||0, bw: l.bitrate||0 }))
+      .sort((a,b) => b.h - a.h)
+      .forEach(({ i, h, bw }) => {
+        qualList.appendChild(mkQualEl(h ? `${h}p` : `${Math.round(bw/1000)}kbps`, i, false));
+      });
+  }
+
+  function mkQualEl(label, level, active) {
     const el = document.createElement('div');
-    el.className = 'popup-item';
-    el.dataset.track = index;
-    el.textContent = label;
-    captList.appendChild(el);
-    el.addEventListener('click', () => selectCaption(index, el));
-
-    // Parse VTT for custom rendering
-    parseVTT(text, index);
-  } catch (e) { console.warn('Sub load failed:', url); }
-}
-
-function selectCaption(idx, el) {
-  activeCapTrack = idx;
-  captList.querySelectorAll('.popup-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  for (let i = 0; i < video.textTracks.length; i++) {
-    video.textTracks[i].mode = (i === idx) ? 'hidden' : 'disabled';
-  }
-  captDisplay.style.display = idx >= 0 ? 'block' : 'none';
-  if (idx < 0) captDisplay.textContent = '';
-}
-
-// Caption off item
-captList.querySelector('[data-track="-1"]').addEventListener('click', function() {
-  selectCaption(-1, this);
-});
-
-// ═══════════════════════════════════════════════
-//  VTT PARSER (for custom caption rendering)
-// ═══════════════════════════════════════════════
-function parseVTT(text, trackIdx) {
-  const cues = [];
-  const blocks = text.split(/\n\n+/);
-  for (const block of blocks) {
-    const lines = block.trim().split('\n');
-    const timeLine = lines.find(l => l.includes('-->'));
-    if (!timeLine) continue;
-    const [startStr, endStr] = timeLine.split('-->').map(s => s.trim());
-    const start = vttTime(startStr);
-    const end   = vttTime(endStr);
-    const textLines = lines.slice(lines.indexOf(timeLine) + 1);
-    cues.push({ start, end, text: textLines.join('\n') });
-  }
-  captionLines[trackIdx] = cues;
-}
-
-function vttTime(s) {
-  const parts = s.split(':').map(parseFloat);
-  if (parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
-  return parts[0]*60 + parts[1];
-}
-
-// ═══════════════════════════════════════════════
-//  PROGRESS BAR MARKERS
-// ═══════════════════════════════════════════════
-function buildMarkers() {
-  if (!duration) return;
-  document.querySelectorAll('.seg-marker,.seg-label').forEach(e => e.remove());
-
-  function addSeg(start, end, cls, labelText) {
-    if (isNaN(start) || isNaN(end)) return;
-    const pStart = start / duration * 100;
-    const pEnd   = end   / duration * 100;
-    const pWidth = pEnd - pStart;
-
-    const seg = document.createElement('div');
-    seg.className = `seg-marker ${cls}`;
-    seg.style.left = pStart + '%';
-    seg.style.width = pWidth + '%';
-    progTrack.appendChild(seg);
-
-    const lbl = document.createElement('div');
-    lbl.className = `seg-label ${cls}`;
-    lbl.textContent = labelText;
-    lbl.style.left = (pStart + pWidth / 2) + '%';
-    progTrack.appendChild(lbl);
+    el.className = 'popup-item' + (active ? ' active' : '');
+    el.dataset.level = level;
+    el.innerHTML = `<span>${label}</span><div class="q-dot"></div>`;
+    el.addEventListener('click', () => {
+      qualList.querySelectorAll('.popup-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+      if (hlsInstance) hlsInstance.currentLevel = level;
+      flashKbd(label === 'Auto' ? 'Quality: Auto' : `Quality: ${label}`);
+    });
+    return el;
   }
 
-  addSeg(introStart, introEnd, 'intro', 'Intro');
-  addSeg(outroStart, outroEnd, 'outro', 'Outro');
-}
+  // ── SPEED ──
+  [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'popup-item' + (s === 1 ? ' active' : '');
+    el.innerHTML = `<span>${s === 1 ? 'Normal' : s + '×'}</span><div class="q-dot"></div>`;
+    el.addEventListener('click', () => {
+      video.playbackRate = s;
+      speedList.querySelectorAll('.popup-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+      flashKbd(`Speed: ${s === 1 ? 'Normal' : s + '×'}`);
+    });
+    speedList.appendChild(el);
+  });
 
-// ═══════════════════════════════════════════════
-//  TIME HELPERS
-// ═══════════════════════════════════════════════
-function fmt(s) {
-  if (isNaN(s)) return '0:00';
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = Math.floor(s % 60);
-  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-  return `${m}:${String(sec).padStart(2,'0')}`;
-}
+  // ── SUBTITLES ──
+  async function loadSub(url, label, index) {
+    try {
+      const r = await fetch(url);
+      const text = await r.text();
+      const blob = new Blob([text], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+      const track = document.createElement('track');
+      track.kind = 'subtitles'; track.label = label;
+      track.src = blobUrl; track.srclang = 'und';
+      video.appendChild(track);
 
-// ═══════════════════════════════════════════════
-//  VIDEO EVENTS
-// ═══════════════════════════════════════════════
-video.addEventListener('loadedmetadata', () => {
-  duration = video.duration;
-  buildMarkers();
-});
-
-video.addEventListener('durationchange', () => {
-  duration = video.duration;
-  buildMarkers();
-});
-
-video.addEventListener('timeupdate', () => {
-  const ct = video.currentTime;
-  if (!duration) return;
-
-  // Progress fill
-  const pct = ct / duration * 100;
-  progFill.style.width = pct + '%';
-  progThumb.style.left = pct + '%';
-
-  // Time display
-  timeDisp.textContent = `${fmt(ct)} / ${fmt(duration)}`;
-
-  // Captions
-  if (activeCapTrack >= 0 && captionLines[activeCapTrack]) {
-    const cue = captionLines[activeCapTrack].find(c => ct >= c.start && ct <= c.end);
-    captDisplay.textContent = cue ? cue.text : '';
+      const el = document.createElement('div');
+      el.className = 'popup-item';
+      el.dataset.track = index;
+      el.innerHTML = `<span>${label}</span><div class="q-dot"></div>`;
+      captList.appendChild(el);
+      el.addEventListener('click', () => selectCaption(index, el));
+      parseVTT(text, index);
+    } catch(e) { console.warn('Sub load failed:', url); }
   }
 
-  // Skip intro button
-  if (!isNaN(introStart) && !isNaN(introEnd)) {
-    if (ct >= introStart && ct < introEnd) {
-      skipBtn.style.display = 'block';
+  function selectCaption(idx, el) {
+    activeCapTrack = idx;
+    captList.querySelectorAll('.popup-item').forEach(i => i.classList.remove('active'));
+    if (el) el.classList.add('active');
+    for (let i = 0; i < video.textTracks.length; i++) {
+      video.textTracks[i].mode = (i === idx) ? 'hidden' : 'disabled';
+    }
+    captDisplay.style.display = idx >= 0 ? 'block' : 'none';
+    if (idx < 0) captDisplay.textContent = '';
+  }
+
+  captList.querySelector('[data-track="-1"]').addEventListener('click', function() {
+    selectCaption(-1, this);
+  });
+
+  function parseVTT(text, trackIdx) {
+    const cues = [];
+    for (const block of text.split(/\n\n+/)) {
+      const lines = block.trim().split('\n');
+      const tl = lines.find(l => l.includes('-->'));
+      if (!tl) continue;
+      const [s, e] = tl.split('-->').map(x => vttTime(x.trim()));
+      cues.push({ start: s, end: e, text: lines.slice(lines.indexOf(tl)+1).join('\n') });
+    }
+    captionLines[trackIdx] = cues;
+  }
+
+  function vttTime(s) {
+    const p = s.split(':').map(parseFloat);
+    return p.length === 3 ? p[0]*3600+p[1]*60+p[2] : p[0]*60+p[1];
+  }
+
+  if (subs.length) {
+    subs.forEach((u, i) => loadSub(u.trim(), names[i] || `Track ${i+1}`, i));
+  } else {
+    captBtn.style.opacity = '0.3';
+    captBtn.style.pointerEvents = 'none';
+  }
+
+  // ── MARKERS ──
+  function buildMarkers() {
+    if (!duration) return;
+    document.querySelectorAll('.seg-marker,.seg-label').forEach(e => e.remove());
+    function addSeg(start, end, cls, lbl) {
+      if (isNaN(start)||isNaN(end)) return;
+      const ps = start/duration*100, pw = (end-start)/duration*100;
+      const seg = document.createElement('div');
+      seg.className = `seg-marker ${cls}`;
+      seg.style.left = ps+'%'; seg.style.width = pw+'%';
+      progTrack.appendChild(seg);
+      const label = document.createElement('div');
+      label.className = `seg-label ${cls}`;
+      label.textContent = lbl;
+      label.style.left = (ps+pw/2)+'%';
+      progTrack.appendChild(label);
+    }
+    addSeg(introStart, introEnd, 'intro', 'Intro');
+    addSeg(outroStart, outroEnd, 'outro', 'Outro');
+  }
+
+  // ── TIME ──
+  function fmt(s) {
+    if (isNaN(s)||!isFinite(s)) return '0:00';
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+    return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`;
+  }
+
+  // ── VIDEO EVENTS ──
+  video.addEventListener('loadedmetadata', () => { duration = video.duration; buildMarkers(); });
+  video.addEventListener('durationchange', () => { duration = video.duration; buildMarkers(); });
+
+  video.addEventListener('timeupdate', () => {
+    const ct = video.currentTime;
+    if (!duration) return;
+    const pct = ct/duration*100;
+    progFill.style.width = pct+'%';
+    progThumb.style.left = pct+'%';
+    timeDisp.textContent = `${fmt(ct)} / ${fmt(duration)}`;
+
+    if (activeCapTrack >= 0 && captionLines[activeCapTrack]) {
+      const cue = captionLines[activeCapTrack].find(c => ct>=c.start && ct<=c.end);
+      captDisplay.textContent = cue ? cue.text : '';
+    }
+
+    // Skip intro
+    if (!isNaN(introStart) && ct >= introStart && ct < introEnd) {
       skipBtn.textContent = 'Skip Intro →';
-      if (skipIntroCk.checked && !introDone) {
-        introDone = true;
-        video.currentTime = introEnd;
-      }
-    } else { skipBtn.style.display = 'none'; }
-  }
-
-  // Skip outro
-  if (!isNaN(outroStart) && !isNaN(outroEnd)) {
-    if (ct >= outroStart && ct < outroEnd) {
       skipBtn.style.display = 'block';
+      if (skipIntroCk.checked && !introDone) { introDone = true; video.currentTime = introEnd; }
+    } else if (!isNaN(outroStart) && ct >= outroStart && ct < outroEnd) {
       skipBtn.textContent = 'Skip Outro →';
-      if (skipOutroCk.checked && !outroDone) {
-        outroDone = true;
-        video.currentTime = outroEnd;
+      skipBtn.style.display = 'block';
+      if (skipOutroCk.checked && !outroDone) { outroDone = true; video.currentTime = outroEnd; }
+    } else {
+      skipBtn.style.display = 'none';
+    }
+
+    if (ct < (introStart||0)) introDone = false;
+    if (ct < (outroStart||0)) outroDone = false;
+  });
+
+  video.addEventListener('progress', () => {
+    if (!duration) return;
+    let buf = 0;
+    for (let i = 0; i < video.buffered.length; i++) {
+      if (video.buffered.start(i) <= video.currentTime) buf = Math.max(buf, video.buffered.end(i));
+    }
+    progBuf.style.width = (buf/duration*100)+'%';
+  });
+
+  video.addEventListener('play',    () => updatePlayIcon(false));
+  video.addEventListener('pause',   () => updatePlayIcon(true));
+  video.addEventListener('waiting', () => spinner.style.display = 'block');
+  video.addEventListener('playing', () => spinner.style.display = 'none');
+  video.addEventListener('canplay', () => spinner.style.display = 'none');
+
+  function updatePlayIcon(paused) {
+    const shape = paused ? '<polygon points="5,3 19,12 5,21"/>' : '<line x1="6" y1="4" x2="6" y2="20"/><line x1="18" y1="4" x2="18" y2="20"/>';
+    playIcon.innerHTML = shape;
+    centerIcon.innerHTML = shape;
+  }
+
+  // ── PLAY/PAUSE ──
+  function togglePlay() {
+    if (video.paused) video.play(); else video.pause();
+    flashCenter();
+  }
+
+  function flashCenter() {
+    centerPlay.style.opacity = '1';
+    centerPlay.style.transform = 'translate(-50%,-50%) scale(1)';
+    setTimeout(() => { centerPlay.style.opacity = '0'; centerPlay.style.transform = 'translate(-50%,-50%) scale(0.85)'; }, 600);
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+  video.addEventListener('click', () => { togglePlay(); showControls(); });
+
+  // ── SEEK ──
+  function getProgPct(e) {
+    const r = progTrack.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX-r.left)/r.width));
+  }
+
+  progWrap.addEventListener('mousemove', e => {
+    const pct = getProgPct(e);
+    timeTooltip.textContent = fmt(pct*duration);
+    timeTooltip.style.left = (pct*100)+'%';
+    if (isDragging) video.currentTime = pct * duration;
+  });
+
+  progWrap.addEventListener('mousedown', e => {
+    isDragging = true;
+    video.currentTime = getProgPct(e) * duration;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const r = progTrack.getBoundingClientRect();
+    video.currentTime = Math.max(0, Math.min(1, (e.clientX-r.left)/r.width)) * duration;
+  });
+
+  skipBtn.addEventListener('click', () => {
+    if (!isNaN(introEnd) && video.currentTime < introEnd) { video.currentTime = introEnd; introDone = true; }
+    else if (!isNaN(outroEnd)) { video.currentTime = outroEnd; outroDone = true; }
+  });
+
+  backBtn.addEventListener('click', () => { video.currentTime = Math.max(0, video.currentTime-10); flashKbd('−10s'); });
+  fwdBtn.addEventListener('click',  () => { video.currentTime = Math.min(duration||Infinity, video.currentTime+10); flashKbd('+10s'); });
+
+  // ── VOLUME ──
+  muteBtn.addEventListener('click', () => { video.muted = !video.muted; updateVolIcon(); flashKbd(video.muted ? 'Muted' : 'Unmuted'); });
+  volSlider.addEventListener('input', () => { video.volume = +volSlider.value; video.muted = volSlider.value==0; updateVolIcon(); });
+
+  function updateVolIcon() {
+    const v = video.muted ? 0 : video.volume;
+    volSlider.value = v;
+    const waves = document.getElementById('vol-waves');
+    if (v === 0) {
+      waves.setAttribute('d','M23 9l-6 6M17 9l6 6');
+    } else if (v < 0.5) {
+      waves.setAttribute('d','M15.54 8.46a5 5 0 0 1 0 7.07');
+    } else {
+      waves.setAttribute('d','M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14');
+    }
+  }
+
+  // ── FULLSCREEN ──
+  fsBtn.addEventListener('click', toggleFS);
+  function toggleFS() {
+    if (!document.fullscreenElement) playerWrap.requestFullscreen().catch(()=>{});
+    else document.exitFullscreen();
+  }
+  document.addEventListener('fullscreenchange', () => {
+    const inFS = !!document.fullscreenElement;
+    fsIcon.innerHTML = inFS
+      ? '<polyline points="4,14 10,14 10,20"/><polyline points="20,10 14,10 14,4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>'
+      : '<polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>';
+  });
+
+  // ── PiP ──
+  pipItem.addEventListener('click', () => {
+    if (document.pictureInPictureElement) document.exitPictureInPicture();
+    else if (document.pictureInPictureEnabled) video.requestPictureInPicture();
+    closeAll();
+  });
+
+  // ── POPUPS ──
+  function closeAll() {
+    settPopup.classList.remove('open'); settBtn.classList.remove('active');
+    captPopup.classList.remove('open'); captBtn.classList.remove('active');
+  }
+  settBtn.addEventListener('click', e => { e.stopPropagation(); captPopup.classList.remove('open'); captBtn.classList.remove('active'); settPopup.classList.toggle('open'); settBtn.classList.toggle('active'); });
+  captBtn.addEventListener('click', e => { e.stopPropagation(); settPopup.classList.remove('open'); settBtn.classList.remove('active'); captPopup.classList.toggle('open'); captBtn.classList.toggle('active'); });
+  playerWrap.addEventListener('click', closeAll);
+  settPopup.addEventListener('click', e => e.stopPropagation());
+  captPopup.addEventListener('click', e => e.stopPropagation());
+
+  // ── CONTROLS VISIBILITY ──
+  function showControls() {
+    overlay.classList.add('visible');
+    playerWrap.classList.add('show-cursor');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      if (!video.paused && !settPopup.classList.contains('open') && !captPopup.classList.contains('open')) {
+        overlay.classList.remove('visible');
+        playerWrap.classList.remove('show-cursor');
       }
+    }, 3000);
+  }
+
+  playerWrap.addEventListener('mousemove', showControls);
+  playerWrap.addEventListener('mouseleave', () => { if (!video.paused) { overlay.classList.remove('visible'); playerWrap.classList.remove('show-cursor'); } });
+  video.addEventListener('pause', showControls);
+
+  // ── KEYBOARD ──
+  function flashKbd(msg) {
+    kbdFlash.textContent = msg;
+    kbdFlash.classList.add('show');
+    clearTimeout(kbdTimer);
+    kbdTimer = setTimeout(() => kbdFlash.classList.remove('show'), 1200);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+    showControls();
+    switch(e.key) {
+      case ' ': case 'k': e.preventDefault(); togglePlay(); break;
+      case 'ArrowRight': e.preventDefault(); video.currentTime += 10; flashKbd('+10s'); break;
+      case 'ArrowLeft':  e.preventDefault(); video.currentTime -= 10; flashKbd('−10s'); break;
+      case 'ArrowUp':    e.preventDefault(); video.volume = Math.min(1,video.volume+0.1); updateVolIcon(); flashKbd(`Vol ${Math.round(video.volume*100)}%`); break;
+      case 'ArrowDown':  e.preventDefault(); video.volume = Math.max(0,video.volume-0.1); updateVolIcon(); flashKbd(`Vol ${Math.round(video.volume*100)}%`); break;
+      case 'm': case 'M': video.muted=!video.muted; updateVolIcon(); flashKbd(video.muted?'Muted':'Unmuted'); break;
+      case 'f': case 'F': toggleFS(); break;
     }
-  }
+  });
 
-  // Reset skip done flags when rewinding
-  if (ct < (introStart || 0)) introDone = false;
-  if (ct < (outroStart || 0)) outroDone = false;
-});
-
-video.addEventListener('progress', () => {
-  if (!duration) return;
-  let buf = 0;
-  for (let i = 0; i < video.buffered.length; i++) {
-    if (video.buffered.start(i) <= video.currentTime) {
-      buf = Math.max(buf, video.buffered.end(i));
-    }
-  }
-  progBuf.style.width = (buf / duration * 100) + '%';
-});
-
-video.addEventListener('play', () => updatePlayIcon(false));
-video.addEventListener('pause', () => updatePlayIcon(true));
-video.addEventListener('waiting', () => spinner.style.display = 'block');
-video.addEventListener('playing', () => spinner.style.display = 'none');
-video.addEventListener('canplay', () => spinner.style.display = 'none');
-
-function updatePlayIcon(paused) {
-  if (paused) {
-    playIcon.innerHTML = '<polygon points="5,3 19,12 5,21"/>';
-    centerIcon.innerHTML = '<polygon points="5,3 19,12 5,21"/>';
-  } else {
-    playIcon.innerHTML = '<line x1="6" y1="4" x2="6" y2="20"/><line x1="18" y1="4" x2="18" y2="20"/>';
-    centerIcon.innerHTML = '<line x1="6" y1="4" x2="6" y2="20"/><line x1="18" y1="4" x2="18" y2="20"/>';
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  PLAY / PAUSE
-// ═══════════════════════════════════════════════
-function togglePlay() {
-  if (video.paused) video.play(); else video.pause();
-  flashCenter();
-}
-
-function flashCenter() {
-  centerPlay.style.opacity = '1';
-  centerPlay.style.transform = 'translate(-50%,-50%) scale(1)';
-  setTimeout(() => {
-    centerPlay.style.opacity = '0';
-    centerPlay.style.transform = 'translate(-50%,-50%) scale(0.85)';
-  }, 600);
-}
-
-playBtn.addEventListener('click', togglePlay);
-video.addEventListener('click', () => { togglePlay(); showControls(); });
-
-// ═══════════════════════════════════════════════
-//  SEEK
-// ═══════════════════════════════════════════════
-function seekTo(pct) {
-  if (!duration) return;
-  video.currentTime = Math.max(0, Math.min(1, pct)) * duration;
-}
-
-function progEventPos(e) {
-  const rect = progTrack.getBoundingClientRect();
-  return (e.clientX - rect.left) / rect.width;
-}
-
-progWrap.addEventListener('mousemove', e => {
-  const pct = progEventPos(e);
-  const t = pct * duration;
-  timeTooltip.textContent = fmt(t);
-  timeTooltip.style.left = (progEventPos(e) * 100) + '%';
-  if (isDragging) { seekTo(pct); }
-});
-
-progWrap.addEventListener('mousedown', e => {
-  isDragging = true;
-  seekTo(progEventPos(e));
-  e.preventDefault();
-});
-
-window.addEventListener('mouseup', () => { isDragging = false; });
-window.addEventListener('mousemove', e => {
-  if (isDragging) {
-    const rect = progTrack.getBoundingClientRect();
-    seekTo((e.clientX - rect.left) / rect.width);
-  }
-});
-
-backBtn.addEventListener('click', () => { video.currentTime = Math.max(0, video.currentTime - 10); flashKbd('−10s'); });
-fwdBtn.addEventListener('click',  () => { video.currentTime = Math.min(duration, video.currentTime + 10); flashKbd('+10s'); });
-
-// ═══════════════════════════════════════════════
-//  SKIP INTRO MANUAL
-// ═══════════════════════════════════════════════
-skipBtn.addEventListener('click', () => {
-  if (video.currentTime < introEnd && video.currentTime >= introStart) {
-    video.currentTime = introEnd;
-    introDone = true;
-  } else if (!isNaN(outroStart) && video.currentTime >= outroStart) {
-    video.currentTime = outroEnd;
-    outroDone = true;
-  }
-});
-
-// ═══════════════════════════════════════════════
-//  VOLUME
-// ═══════════════════════════════════════════════
-muteBtn.addEventListener('click', () => {
-  video.muted = !video.muted;
-  updateVolIcon();
-  flashKbd(video.muted ? 'Muted' : 'Unmuted');
-});
-
-volSlider.addEventListener('input', () => {
-  video.volume = volSlider.value;
-  video.muted = volSlider.value == 0;
-  updateVolIcon();
-});
-
-function updateVolIcon() {
-  const v = video.muted ? 0 : video.volume;
-  const volWaves = document.getElementById('vol-waves');
-  if (v === 0) {
-    volIcon.querySelector('polygon').setAttribute('points', '11,5 6,9 2,9 2,15 6,15 11,19');
-    if (volWaves) volWaves.setAttribute('d', 'M23 9l-6 6M17 9l6 6');
-  } else {
-    volIcon.querySelector('polygon').setAttribute('points', '11,5 6,9 2,9 2,15 6,15 11,19');
-    if (volWaves) {
-      if (v < 0.5) volWaves.setAttribute('d', 'M15.54 8.46a5 5 0 0 1 0 7.07');
-      else volWaves.setAttribute('d', 'M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14');
-    }
-  }
-  volSlider.value = v;
-}
-
-// ═══════════════════════════════════════════════
-//  FULLSCREEN
-// ═══════════════════════════════════════════════
-fsBtn.addEventListener('click', toggleFS);
-
-function toggleFS() {
-  if (!document.fullscreenElement) {
-    wrap.requestFullscreen().catch(() => {});
-  } else {
-    document.exitFullscreen();
-  }
-}
-
-document.addEventListener('fullscreenchange', () => {
-  const inFS = !!document.fullscreenElement;
-  fsIcon.innerHTML = inFS
-    ? '<polyline points="4,14 10,14 10,20"/><polyline points="20,10 14,10 14,4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>'
-    : '<polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>';
-});
-
-// ═══════════════════════════════════════════════
-//  PiP
-// ═══════════════════════════════════════════════
-pipItem.addEventListener('click', () => {
-  if (document.pictureInPictureElement) {
-    document.exitPictureInPicture();
-  } else if (document.pictureInPictureEnabled) {
-    video.requestPictureInPicture();
-  }
-  closeAllPopups();
-});
-
-// ═══════════════════════════════════════════════
-//  POPUPS
-// ═══════════════════════════════════════════════
-function closeAllPopups() {
-  settPopup.classList.remove('open');
-  captPopup.classList.remove('open');
-  settBtn.classList.remove('active');
-  captBtn.classList.remove('active');
-}
-
-settBtn.addEventListener('click', e => {
-  e.stopPropagation();
-  captPopup.classList.remove('open'); captBtn.classList.remove('active');
-  settPopup.classList.toggle('open');
-  settBtn.classList.toggle('active');
-});
-
-captBtn.addEventListener('click', e => {
-  e.stopPropagation();
-  settPopup.classList.remove('open'); settBtn.classList.remove('active');
-  captPopup.classList.toggle('open');
-  captBtn.classList.toggle('active');
-});
-
-wrap.addEventListener('click', closeAllPopups);
-settPopup.addEventListener('click', e => e.stopPropagation());
-captPopup.addEventListener('click', e => e.stopPropagation());
-
-// ═══════════════════════════════════════════════
-//  CONTROLS VISIBILITY
-// ═══════════════════════════════════════════════
-function showControls() {
-  overlay.classList.add('visible');
-  wrap.classList.add('show-cursor');
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(hideControls, 3000);
-}
-
-function hideControls() {
-  if (!video.paused && !settPopup.classList.contains('open') && !captPopup.classList.contains('open')) {
-    overlay.classList.remove('visible');
-    wrap.classList.remove('show-cursor');
-  }
-}
-
-wrap.addEventListener('mousemove', showControls);
-wrap.addEventListener('mouseleave', hideControls);
-video.addEventListener('pause', showControls);
-
-// ═══════════════════════════════════════════════
-//  KEYBOARD
-// ═══════════════════════════════════════════════
-function flashKbd(msg) {
-  kbdFlash.textContent = msg;
-  kbdFlash.classList.add('show');
-  clearTimeout(kbdTimer);
-  kbdTimer = setTimeout(() => kbdFlash.classList.remove('show'), 1200);
-}
-
-document.addEventListener('keydown', e => {
-  if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
   showControls();
-  switch (e.key) {
-    case ' ': case 'k': e.preventDefault(); togglePlay(); break;
-    case 'ArrowRight': e.preventDefault(); video.currentTime += 10; flashKbd('+10s'); break;
-    case 'ArrowLeft':  e.preventDefault(); video.currentTime -= 10; flashKbd('−10s'); break;
-    case 'ArrowUp':    e.preventDefault(); video.volume = Math.min(1, video.volume+0.1); updateVolIcon(); flashKbd(`Vol ${Math.round(video.volume*100)}%`); break;
-    case 'ArrowDown':  e.preventDefault(); video.volume = Math.max(0, video.volume-0.1); updateVolIcon(); flashKbd(`Vol ${Math.round(video.volume*100)}%`); break;
-    case 'm': case 'M': video.muted = !video.muted; updateVolIcon(); flashKbd(video.muted ? 'Muted' : 'Unmuted'); break;
-    case 'f': case 'F': toggleFS(); break;
-  }
-});
-
-// ═══════════════════════════════════════════════
-//  LOAD SUBTITLES
-// ═══════════════════════════════════════════════
-if (subsParam) {
-  const urls  = subsParam.split(',');
-  const names = namesParam ? namesParam.split(',') : [];
-  urls.forEach((u, i) => loadSub(u.trim(), names[i] || `Track ${i+1}`, i));
 }
-
-// ═══════════════════════════════════════════════
-//  INITIAL PLAY
-// ═══════════════════════════════════════════════
-if (!hlsInstance) {
-  video.play().catch(() => {});
-}
-
-showControls();
 </script>
 </body>
 </html>
