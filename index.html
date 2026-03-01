@@ -415,26 +415,60 @@ function init(cfg){
   if(isNaN(introStart))$('rsi').style.display='none';
   if(isNaN(outroStart))$('rso').style.display='none';
 
-  // ── QUALITY LEVELS (URL substitution) ─────────────
-  // Replace whatever .m3u8 filename is at the end of the URL with the desired one
+  // ── QUALITY LEVELS (blob master.m3u8 approach) ─────
   const QUALITIES=[
-    {label:'1080p',file:'index-f1-v1-a1.m3u8',badge:'HD'},
-    {label:'720p', file:'index-f2-v1-a1.m3u8',badge:''},
-    {label:'360p', file:'index-f3-v1-a1.m3u8',badge:''},
+    {label:'1080p', file:'index-f1-v1-a1.m3u8', bw:'BANDWIDTH=5000000,RESOLUTION=1920x1080', badge:'HD'},
+    {label:'720p',  file:'index-f2-v1-a1.m3u8', bw:'BANDWIDTH=2800000,RESOLUTION=1280x720',  badge:''},
+    {label:'360p',  file:'index-f3-v1-a1.m3u8', bw:'BANDWIDTH=1159248,RESOLUTION=640x360',   badge:''},
   ];
-  let currentQualityIdx=0; // start at 1080p
+  let currentQualityIdx=-1; // -1 = Auto
+  let blobUrl=null;
 
-  function buildQualUrl(file){
-    // Replace the last path segment (*.m3u8) with the target file
-    return url.replace(/[^/]+\.m3u8(\?.*)?$/, file);
+  // Replace the last m3u8 filename in the token URL
+  function buildStreamUrl(file){
+    return url.replace(/[^/?#]+\.m3u8(\?[^#]*)?(?:#.*)?$/, file);
+  }
+
+  // Blob master with ONLY one quality (locked)
+  function makeSingleQualityBlob(idx){
+    const q=QUALITIES[idx];
+    const m3u8=[
+      '#EXTM3U',
+      `#EXT-X-STREAM-INF:PROGRAM-ID=1,${q.bw},CODECS="avc1.640032,mp4a.40.2"`,
+      buildStreamUrl(q.file),
+      ''
+    ].join('\n');
+    return new Blob([m3u8],{type:'application/vnd.apple.mpegurl'});
+  }
+
+  // Blob master with ALL qualities (Auto — hls.js picks adaptive)
+  function makeAutoBlob(){
+    const lines=['#EXTM3U'];
+    QUALITIES.forEach(q=>{
+      lines.push(`#EXT-X-STREAM-INF:PROGRAM-ID=1,${q.bw},CODECS="avc1.640032,mp4a.40.2"`);
+      lines.push(buildStreamUrl(q.file));
+    });
+    return new Blob([lines.join('\n')+'\n'],{type:'application/vnd.apple.mpegurl'});
+  }
+
+  function revokeBlobUrl(){
+    if(blobUrl){URL.revokeObjectURL(blobUrl);blobUrl=null;}
   }
 
   // Build quality rows in settings
   function buildQualUI(){
     ql.innerHTML='';
+    // Auto row (default active)
+    const autoEl=document.createElement('div');
+    autoEl.className='srow on';
+    autoEl.dataset.qi='-1';
+    autoEl.innerHTML='<span>Auto <span class="srow-sub">Adaptive</span></span><div class="dot"></div>';
+    autoEl.addEventListener('click',()=>switchQuality(-1,autoEl));
+    ql.appendChild(autoEl);
+
     QUALITIES.forEach((q,i)=>{
       const el=document.createElement('div');
-      el.className='srow'+(i===0?' on':'');
+      el.className='srow';
       el.dataset.qi=i;
       el.innerHTML=`<span>${q.label}${q.badge?`<span class="srow-sub qual-badge">${q.badge}</span>`:''}</span><div class="dot"></div>`;
       el.addEventListener('click',()=>switchQuality(i,el));
@@ -447,14 +481,19 @@ function init(cfg){
     currentQualityIdx=idx;
     ql.querySelectorAll('.srow').forEach(r=>r.classList.remove('on'));
     el.classList.add('on');
-    const targetUrl=buildQualUrl(QUALITIES[idx].file);
+
     const pos=vid.currentTime;
     const wasPlaying=!vid.paused;
     spin.style.display='block';
-    // Destroy old HLS and reload with new stream URL
+
     if(hls){hls.destroy();hls=null;}
-    loadHLS(targetUrl,pos,wasPlaying);
-    flash(`Quality: ${QUALITIES[idx].label}`);
+    revokeBlobUrl();
+
+    const blob=idx===-1 ? makeAutoBlob() : makeSingleQualityBlob(idx);
+    blobUrl=URL.createObjectURL(blob);
+
+    loadHLS(blobUrl, pos, wasPlaying);
+    flash(idx===-1 ? 'Quality: Auto' : `Quality: ${QUALITIES[idx].label}`);
     closeSettings();
   }
 
@@ -544,8 +583,12 @@ function init(cfg){
     }
   }
 
-  // Start at 1080p
-  loadHLS(buildQualUrl(QUALITIES[0].file));
+  // Start in Auto mode (blob master with all qualities)
+  {
+    const blob=makeAutoBlob();
+    blobUrl=URL.createObjectURL(blob);
+    loadHLS(blobUrl);
+  }
 
   // ── SPEED ─────────────────────────────────────────
   [0.25,0.5,0.75,1,1.25,1.5,1.75,2].forEach(s=>{
