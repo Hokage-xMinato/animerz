@@ -60,7 +60,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
     rgba(0,0,0,.5) 72%,
     rgba(0,0,0,.88) 100%);
   pointer-events:none;opacity:0;
-  transition:opacity .3s var(--ease);z-index:1;
+  transition:opacity .4s var(--ease);z-index:1;
 }
 #grad.on{opacity:1}
 
@@ -69,42 +69,99 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
 #tz-l{left:0}#tz-r{right:0}
 
 /* ── SEEK FLASH ── */
-.seek-flash{position:absolute;top:0;bottom:0;width:38%;z-index:5;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
+.seek-flash{position:absolute;top:0;bottom:0;width:38%;z-index:5;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s var(--ease);}
 #sf-l{left:0;background:radial-gradient(ellipse at 25% 50%,rgba(255,255,255,.1) 0%,transparent 65%)}
 #sf-r{right:0;background:radial-gradient(ellipse at 75% 50%,rgba(255,255,255,.1) 0%,transparent 65%)}
 .seek-flash.show{opacity:1}
 .seek-flash svg{width:24px;height:24px;stroke:rgba(255,255,255,.8);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ── SPINNER ── */
-#spin{position:absolute;top:50%;left:50%;z-index:10;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;border:2px solid rgba(255,255,255,.06);border-top-color:var(--gold);animation:rot .65s linear infinite;display:none;pointer-events:none;}
+#spin{position:absolute;top:50%;left:50%;z-index:10;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;border:2px solid rgba(255,255,255,.06);border-top-color:var(--gold);animation:rot .65s linear infinite;display:none;pointer-events:none;opacity:0;transition:opacity .25s var(--ease);}
+#spin.vis{display:block;opacity:1}
 @keyframes rot{to{transform:translate(-50%,-50%) rotate(360deg)}}
 
-/* ── CENTER FLASH (no background circle) ── */
+/* ── CENTER FLASH ── */
 #cf{position:absolute;top:50%;left:50%;z-index:8;transform:translate(-50%,-50%) scale(0);display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:transform .12s var(--spring),opacity .22s var(--ease);}
 #cf svg{width:52px;height:52px;stroke:#fff;fill:rgba(255,255,255,.12);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 16px rgba(255,255,255,.3));transition:fill .15s;}
 #cf.pop{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
 /* ── SKIP BTN ── */
-#skip-btn{position:absolute;z-index:20;right:clamp(14px,4vw,32px);bottom:clamp(88px,16vh,132px);background:rgba(10,10,14,.85);border:1.5px solid var(--gold);color:var(--gold);font-family:var(--fn);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:9px 20px;border-radius:6px;cursor:pointer;display:none;backdrop-filter:blur(14px);transition:background .15s,color .15s,transform .12s,box-shadow .15s;}
-#skip-btn:hover,#skip-btn:active{background:var(--gold);color:#000;transform:scale(1.03);box-shadow:0 0 20px var(--gold-glow)}
+#skip-btn{
+  position:absolute;z-index:20;
+  right:clamp(14px,4vw,32px);
+  bottom:clamp(88px,16vh,132px);
+  background:rgba(10,10,14,.88);
+  border:1.5px solid var(--gold);
+  color:var(--gold);
+  font-family:var(--fn);font-size:11px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;
+  padding:9px 20px;border-radius:6px;cursor:pointer;
+  display:none;
+  backdrop-filter:blur(14px);
+  transition:background .18s,color .18s,transform .14s var(--spring),box-shadow .18s,opacity .2s;
+  opacity:0;
+}
+#skip-btn.visible{display:block;opacity:1}
+#skip-btn:hover,#skip-btn:active{background:var(--gold);color:#000;transform:scale(1.04);box-shadow:0 0 24px var(--gold-glow)}
 
 /* ── CAPTIONS ── */
-#cap{position:absolute;z-index:15;bottom:clamp(82px,14vh,120px);left:50%;transform:translateX(-50%);text-align:center;font-family:var(--fn);font-size:clamp(13px,2.2vw,20px);font-weight:500;line-height:1.55;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,1),0 2px 16px rgba(0,0,0,.8);padding:5px 16px 6px;background:rgba(0,0,0,.65);border-radius:6px;max-width:min(82%,640px);pointer-events:none;display:none;backdrop-filter:blur(4px);}
+#cap{
+  position:absolute;z-index:15;
+  bottom:clamp(82px,14vh,120px);
+  left:50%;transform:translateX(-50%);
+  text-align:center;
+  font-family:var(--fn);
+  font-size:clamp(13px,2.2vw,20px);
+  font-weight:500;line-height:1.55;
+  color:#fff;
+  text-shadow:0 1px 6px rgba(0,0,0,1),0 2px 16px rgba(0,0,0,.8);
+  padding:5px 16px 6px;
+  background:rgba(0,0,0,.65);
+  border-radius:6px;
+  max-width:min(82%,640px);
+  pointer-events:none;
+  display:none;
+  backdrop-filter:blur(4px);
+  opacity:0;
+  transition:opacity .18s var(--ease);
+}
+#cap.has-text{opacity:1}
 
 /* ── KBD FLASH ── */
-#kf{position:absolute;top:22px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(10,10,14,.92);border:1px solid var(--bdr2);color:var(--txt);font-family:var(--mono);font-size:11px;padding:5px 14px;border-radius:6px;backdrop-filter:blur(12px);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;letter-spacing:.04em;}
+#kf{
+  position:absolute;top:22px;left:50%;transform:translateX(-50%);
+  z-index:30;
+  background:rgba(10,10,14,.92);
+  border:1px solid var(--bdr2);
+  color:var(--txt);
+  font-family:var(--mono);font-size:11px;
+  padding:5px 14px;border-radius:6px;
+  backdrop-filter:blur(12px);
+  white-space:nowrap;
+  opacity:0;pointer-events:none;
+  transition:opacity .2s var(--ease);
+  letter-spacing:.04em;
+}
 #kf.on{opacity:1}
 
 /* ── CONTROLS WRAP ── */
-#cw{position:absolute;left:0;right:0;bottom:0;z-index:20;padding:0 clamp(14px,3vw,28px) clamp(12px,env(safe-area-inset-bottom,0px)+12px,26px);display:flex;flex-direction:column;gap:4px;pointer-events:none;opacity:0;transition:opacity .3s var(--ease);}
-#cw.active{pointer-events:all;opacity:1}
+#cw{
+  position:absolute;left:0;right:0;bottom:0;z-index:20;
+  padding:0 clamp(14px,3vw,28px) clamp(12px,env(safe-area-inset-bottom,0px)+12px,26px);
+  display:flex;flex-direction:column;gap:4px;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(6px);
+  transition:opacity .3s var(--ease),transform .3s var(--ease);
+}
+#cw.active{pointer-events:all;opacity:1;transform:translateY(0)}
 
 /* ── PROGRESS ── */
 #pw{position:relative;height:28px;display:flex;align-items:center;cursor:pointer;padding:9px 0;touch-action:none;}
 #pr{position:relative;width:100%;height:3px;background:rgba(255,255,255,.18);border-radius:99px;transition:height .2s var(--ease);}
 #pw:hover #pr,#pw.drag #pr{height:5px}
 
-#pb{position:absolute;top:0;left:0;height:100%;background:rgba(255,255,255,.22);border-radius:99px;pointer-events:none;width:0;}
+#pb{position:absolute;top:0;left:0;height:100%;background:rgba(255,255,255,.22);border-radius:99px;pointer-events:none;width:0;transition:width .3s linear;}
 #pf{position:absolute;top:0;left:0;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px;pointer-events:none;width:0;}
 
 #pt{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:#fff;transform:translate(-50%,-50%) scale(0);pointer-events:none;transition:transform .15s var(--spring);box-shadow:0 0 0 3px rgba(240,192,64,.35),0 2px 8px rgba(0,0,0,.5);z-index:3;left:0;}
@@ -125,14 +182,14 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
 /* ── BUTTON ROW ── */
 #row{display:flex;align-items:center;gap:1px;height:44px}
 
-.btn{background:none;border:none;color:var(--txt);cursor:pointer;width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:background .13s,color .13s,transform .1s;flex-shrink:0;position:relative;}
+.btn{background:none;border:none;color:var(--txt);cursor:pointer;width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:background .13s,color .13s,transform .1s var(--spring);flex-shrink:0;position:relative;}
 .btn:hover{background:var(--surf2);color:#fff}
 .btn:active{transform:scale(.82)}
 .btn.lit{color:var(--gold)}
 .btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 #bp svg{width:20px;height:20px}
 
-.seek-btn{background:none;border:none;color:var(--txt);cursor:pointer;width:40px;height:38px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:background .13s,color .13s,transform .1s;flex-shrink:0;}
+.seek-btn{background:none;border:none;color:var(--txt);cursor:pointer;width:40px;height:38px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:background .13s,color .13s,transform .1s var(--spring);flex-shrink:0;}
 .seek-btn:hover{background:var(--surf2);color:#fff}
 .seek-btn:active{transform:scale(.82)}
 .seek-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -152,10 +209,12 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
   z-index:50;
   box-shadow:0 24px 64px rgba(0,0,0,.9),0 0 0 .5px rgba(255,255,255,.04);
   display:none;overflow:hidden;
-  animation:pi .18s var(--spring);
 }
-#settings-panel.open{display:block}
-@keyframes pi{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+#settings-panel.open{
+  display:block;
+  animation:pi .2s var(--spring);
+}
+@keyframes pi{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* Settings nav tabs */
 #snav{
@@ -251,9 +310,8 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
   <button id="skip-btn">Skip Intro →</button>
   <div id="kf"></div>
 
-  <!-- Settings Panel (outside controls so fullscreen positioning works) -->
+  <!-- Settings Panel -->
   <div id="settings-panel">
-    <!-- Tabs -->
     <div id="snav">
       <div class="stab active" data-tab="quality">
         <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M7 12h10M12 7v10"/></svg>
@@ -273,24 +331,17 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
       </div>
     </div>
 
-    <!-- Quality -->
     <div class="ssect active" id="sect-quality">
       <div class="sscroll" id="ql"></div>
     </div>
-
-    <!-- Speed -->
     <div class="ssect" id="sect-speed">
       <div class="sscroll" id="spl"></div>
     </div>
-
-    <!-- Captions -->
     <div class="ssect" id="sect-captions">
       <div class="sscroll" id="cl">
         <div class="srow on" data-track="-1"><span>Off</span><div class="dot"></div></div>
       </div>
     </div>
-
-    <!-- More -->
     <div class="ssect" id="sect-more">
       <div class="sact-btn" id="rpip">
         <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="10" width="9" height="7" rx="1"/></svg>
@@ -320,21 +371,17 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
       </div>
     </div>
     <div id="row">
-      <!-- Play/Pause -->
       <button class="btn" id="bp" title="Play / Pause  [Space / K]">
         <svg id="icp" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none"/></svg>
       </button>
-      <!-- Rewind -->
       <button class="seek-btn" id="brw" title="Rewind 10s  [J / ←]">
         <svg viewBox="0 0 24 24"><path d="M12 5V2L7 7l5 5V8a7 7 0 1 1-7 7"/></svg>
         <span>10s</span>
       </button>
-      <!-- Forward -->
       <button class="seek-btn" id="bff" title="Forward 10s  [L / →]">
         <svg viewBox="0 0 24 24"><path d="M12 5V2l5 5-5 5V8a7 7 0 1 0 7 7"/></svg>
         <span>10s</span>
       </button>
-      <!-- Mute -->
       <button class="btn" id="bm" title="Mute  [M]">
         <svg viewBox="0 0 24 24">
           <polygon id="vp" points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor" stroke="none"/>
@@ -343,14 +390,12 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointe
       </button>
       <span id="tt">0:00 / 0:00</span>
       <div id="sp"></div>
-      <!-- Settings -->
       <button class="btn" id="bs" title="Settings  [S]">
         <svg viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <!-- Fullscreen -->
       <button class="btn" id="bfs" title="Fullscreen  [F]">
         <svg id="ifs" viewBox="0 0 24 24">
           <polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/>
@@ -390,6 +435,18 @@ function showInv(m){$('inv-msg').textContent=m;$('invalid').classList.add('show'
   }catch{showInv('Token is corrupted or was generated with a different key.')}
 })();
 
+// ─── LOCALSTORAGE HELPERS ─────────────────────────
+const LS_KEY = 'animerz_prefs';
+function loadPrefs() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; }
+}
+function savePrefs(patch) {
+  try {
+    const prefs = loadPrefs();
+    localStorage.setItem(LS_KEY, JSON.stringify({...prefs, ...patch}));
+  } catch {}
+}
+
 // ─── PLAYER ───────────────────────────────────────
 function init(cfg){
   const{url,introStart=NaN,introEnd=NaN,outroStart=NaN,outroEnd=NaN,subs=[],names=[]}=cfg;
@@ -408,44 +465,45 @@ function init(cfg){
   const settingsPanel=$('settings-panel');
   const bs=$('bs');
 
+  const prefs = loadPrefs();
+
   let hls=null,dur=0,hideT=null,introDone=false,outroDone=false;
   let activeTrack=-1,capLines=[],kT=null,dragging=false;
+  let lastCapText = '';
+
+  // Restore skip toggles from prefs
+  if(prefs.autoSkipIntro !== undefined) csi.checked = prefs.autoSkipIntro;
+  if(prefs.autoSkipOutro !== undefined) cso.checked = prefs.autoSkipOutro;
+
+  // Persist toggle changes
+  csi.addEventListener('change', () => savePrefs({autoSkipIntro: csi.checked}));
+  cso.addEventListener('change', () => savePrefs({autoSkipOutro: cso.checked}));
 
   // Hide intro/outro skip toggles if no markers
   if(isNaN(introStart))$('rsi').style.display='none';
   if(isNaN(outroStart))$('rso').style.display='none';
 
-  // ── QUALITY LEVELS ───────────────────────────────
-  // Strategy:
-  //   Native HLS browser (Safari etc): video.src for everything — blob manifest
-  //     for fixed quality, real master URL for Auto.
-  //   Non-native (Chrome etc): hls.js for Auto (real master URL),
-  //     native video.src blob for fixed quality (blob manifests work natively
-  //     because the browser resolves the absolute stream URL inside them).
+  // ── QUALITY LEVELS ────────────────────────────────
   const QUALITIES=[
     {label:'1080p', code:'f1', bw:'5000000', res:'1920x1080', badge:'HD'},
     {label:'720p',  code:'f2', bw:'2800000', res:'1280x720',  badge:''},
     {label:'360p',  code:'f3', bw:'1159248', res:'640x360',   badge:''},
   ];
-  let currentQualityIdx=-1; // -1 = Auto
+  let currentQualityIdx = prefs.quality !== undefined ? prefs.quality : -1;
   let activeBlobUrl=null;
 
   const nativeHLS = !!vid.canPlayType('application/vnd.apple.mpegurl');
 
-  // Strip the last filename from the URL to get base path
   function getBaseUrl(){
     return url.replace(/[^/?#]+\.m3u8(\?[^#]*)?(?:#.*)?$/, '');
   }
 
-  // Build a single-stream blob manifest pointing at one quality
   function makeBlobManifest(q){
     const streamUrl = getBaseUrl() + 'index-' + q.code + '-v1-a1.m3u8';
     const txt = [
-      '#EXTM3U',
-      '#EXT-X-VERSION:3',
+      '#EXTM3U','#EXT-X-VERSION:3',
       '#EXT-X-STREAM-INF:BANDWIDTH=' + q.bw + ',RESOLUTION=' + q.res,
-      streamUrl,
-      ''
+      streamUrl,''
     ].join('\n');
     return new Blob([txt], {type:'application/x-mpegURL'});
   }
@@ -457,14 +515,14 @@ function init(cfg){
   function buildQualUI(){
     ql.innerHTML='';
     const autoEl=document.createElement('div');
-    autoEl.className='srow on';
+    autoEl.className='srow'+(currentQualityIdx===-1?' on':'');
     autoEl.dataset.qi='-1';
     autoEl.innerHTML='<span>Auto <span class="srow-sub">Adaptive</span></span><div class="dot"></div>';
     autoEl.addEventListener('click',()=>switchQuality(-1,autoEl));
     ql.appendChild(autoEl);
     QUALITIES.forEach((q,i)=>{
       const el=document.createElement('div');
-      el.className='srow';
+      el.className='srow'+(currentQualityIdx===i?' on':'');
       el.dataset.qi=i;
       el.innerHTML='<span>'+q.label+(q.badge?'<span class="srow-sub qual-badge">'+q.badge+'</span>':'')+'</span><div class="dot"></div>';
       el.addEventListener('click',()=>switchQuality(i,el));
@@ -475,30 +533,23 @@ function init(cfg){
   function switchQuality(idx,el){
     if(idx===currentQualityIdx){closeSettings();return;}
     currentQualityIdx=idx;
+    savePrefs({quality: idx});
     ql.querySelectorAll('.srow').forEach(r=>r.classList.remove('on'));
     el.classList.add('on');
 
     const pos=vid.currentTime;
     const wasPlaying=!vid.paused;
-    spin.style.display='block';
+    showSpinner();
 
     if(idx===-1){
-      // ── AUTO ─────────────────────────────────────────
-      // Always use the real master URL so ABR works properly
       revokeBlobUrl();
       if(hls){hls.destroy();hls=null;}
       if(nativeHLS){
-        // Native: just point src at master
         setNativeSrc(url, pos, wasPlaying);
       } else {
         loadHlsJs(url, pos, wasPlaying);
       }
     } else {
-      // ── FIXED QUALITY ────────────────────────────────
-      // Use blob manifest + native video.src regardless of browser.
-      // This works because the absolute stream URL inside the blob is fetched
-      // by the browser's own HLS engine (native) or hls.js reads the src
-      // which resolves correctly.
       if(hls){hls.destroy();hls=null;}
       revokeBlobUrl();
       const blob = makeBlobManifest(QUALITIES[idx]);
@@ -506,7 +557,6 @@ function init(cfg){
       if(nativeHLS){
         setNativeSrc(activeBlobUrl, pos, wasPlaying);
       } else {
-        // hls.js can load blob: URLs when the inner URLs are absolute
         loadHlsJs(activeBlobUrl, pos, wasPlaying);
       }
     }
@@ -543,7 +593,6 @@ function init(cfg){
     });
   });
 
-  // ── SETTINGS TOGGLE ───────────────────────────────
   bs.addEventListener('click',e=>{
     e.stopPropagation();
     const willOpen=!settingsPanel.classList.contains('open');
@@ -568,10 +617,6 @@ function init(cfg){
   window.addEventListener('resize',()=>{if(settingsPanel.classList.contains('open'))positionPanel()});
 
   // ── PLAYBACK ENGINE ───────────────────────────────
-  // Native HLS (Safari, iOS): use video.src directly — no hls.js needed.
-  // Non-native (Chrome, Firefox): use hls.js for the master/auto URL.
-  //   For fixed-quality blob URLs hls.js also works since inner URLs are absolute.
-
   function setNativeSrc(srcUrl, seekTo=0, autoPlay=true){
     vid.preload = 'auto';
     vid.src = srcUrl;
@@ -580,22 +625,19 @@ function init(cfg){
       vid.addEventListener('loadedmetadata',()=>{vid.currentTime=seekTo},{once:true});
     }
     if(autoPlay) vid.play().catch(()=>{});
-    // spinner is managed by the global smart spinner above
   }
 
   function loadHlsJs(srcUrl, seekTo=0, autoPlay=true){
     hls = new Hls({
       enableWorker: true,
       startPosition: seekTo,
-      // Aggressively preload — buffer up to 90s ahead, keep up to 180s in memory
       maxBufferLength: 90,
       maxMaxBufferLength: 180,
-      maxBufferSize: 120*1000*1000,      // 120 MB
+      maxBufferSize: 120*1000*1000,
       maxBufferHole: 0.3,
       highBufferWatchdogPeriod: 2,
       nudgeOffset: 0.2,
       nudgeMaxRetry: 10,
-      // Start loading next segment immediately after current one arrives
       lowLatencyMode: false,
       progressive: true,
       fragLoadingTimeOut: 20000,
@@ -605,7 +647,6 @@ function init(cfg){
       manifestLoadingMaxRetry: 4,
       levelLoadingTimeOut: 20000,
       levelLoadingMaxRetry: 4,
-      // Keep back-buffer so seeking backward is instant
       backBufferLength: 90,
     });
     hls.loadSource(srcUrl);
@@ -613,10 +654,10 @@ function init(cfg){
     hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
       if(seekTo>0) vid.currentTime = seekTo;
       if(autoPlay) vid.play().catch(()=>{});
-      spin.style.display='none';
+      hideSpinner();
     });
     hls.on(Hls.Events.ERROR, (_,d)=>{
-      if(d.fatal){console.error('HLS fatal:',d.type,d.details);spin.style.display='none';}
+      if(d.fatal){console.error('HLS fatal:',d.type,d.details);hideSpinner();}
     });
   }
 
@@ -626,73 +667,172 @@ function init(cfg){
       shell.style.display='none';
       return;
     }
-    // Auto mode on load
-    if(nativeHLS){
-      setNativeSrc(url);
+    // Use saved quality preference on start
+    if(currentQualityIdx === -1){
+      if(nativeHLS) setNativeSrc(url);
+      else loadHlsJs(url);
     } else {
-      loadHlsJs(url);
+      revokeBlobUrl();
+      const blob = makeBlobManifest(QUALITIES[currentQualityIdx]);
+      activeBlobUrl = URL.createObjectURL(blob);
+      if(nativeHLS) setNativeSrc(activeBlobUrl);
+      else loadHlsJs(activeBlobUrl);
     }
   }
 
   startPlayback();
 
   // ── SPEED ─────────────────────────────────────────
+  const savedSpeed = prefs.speed || 1;
   [0.25,0.5,0.75,1,1.25,1.5,1.75,2].forEach(s=>{
     const el=document.createElement('div');
-    el.className='srow'+(s===1?' on':'');
+    el.className='srow'+(s===savedSpeed?' on':'');
     el.innerHTML=`<span>${s===1?'Normal (1×)':s+'×'}</span><div class="dot"></div>`;
     el.addEventListener('click',()=>{
       vid.playbackRate=s;
       spl.querySelectorAll('.srow').forEach(r=>r.classList.remove('on'));
       el.classList.add('on');
+      savePrefs({speed: s});
       flash(`Speed: ${s===1?'Normal':s+'×'}`);closeSettings();
     });
     spl.appendChild(el);
   });
+  // Apply saved speed after metadata
+  vid.addEventListener('loadedmetadata', ()=>{ vid.playbackRate = savedSpeed; }, {once:true});
 
-  // ── SUBTITLES ─────────────────────────────────────
-  async function loadSub(u,label,idx){
-    try{
-      const txt=await(await fetch(u)).text();
-      const blob=new Blob([txt],{type:'text/vtt'});
-      const tr=document.createElement('track');
-      tr.kind='subtitles';tr.label=label;tr.src=URL.createObjectURL(blob);tr.srclang='und';
-      vid.appendChild(tr);
-      const el=document.createElement('div');
-      el.className='srow';el.dataset.track=idx;
-      el.innerHTML=`<span>${label}</span><div class="dot"></div>`;
-      el.addEventListener('click',()=>selTrack(idx,el));
-      cl.appendChild(el);
-      parseVTT(txt,idx);
-    }catch(e){console.warn('Sub fail',u,e)}
+  // ── SUBTITLES — FIXED PARSER ──────────────────────
+  // The core fix: properly parse VTT blocks, handle all timestamp formats,
+  // strip VTT tags correctly, and perform binary search for rendering.
+
+  function parseVTT(txt, idx){
+    const cues = [];
+    // Normalize line endings
+    const normalized = txt.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // Split on double (or more) newlines to get blocks
+    const blocks = normalized.split(/\n{2,}/);
+
+    for(const block of blocks){
+      const lines = block.trim().split('\n');
+      if(!lines.length) continue;
+
+      // Find the timing line (contains ' --> ')
+      let timingIdx = -1;
+      for(let i = 0; i < lines.length; i++){
+        if(lines[i].includes('-->')){timingIdx = i; break;}
+      }
+      if(timingIdx < 0) continue; // no timing found (WEBVTT header, etc.)
+
+      // Parse timing — handle both HH:MM:SS.mmm and MM:SS.mmm
+      // Also strip any positioning tags after the timestamps
+      const timingParts = lines[timingIdx].split('-->');
+      if(timingParts.length < 2) continue;
+
+      const startTime = parseVTTTimestamp(timingParts[0].trim());
+      // End timestamp may have cue settings after it (e.g. "00:01:23.456 align:start position:10%")
+      const endRaw = timingParts[1].trim().split(/\s+/)[0];
+      const endTime = parseVTTTimestamp(endRaw);
+
+      if(isNaN(startTime) || isNaN(endTime)) continue;
+
+      // Text is everything after the timing line
+      const textLines = lines.slice(timingIdx + 1);
+      if(!textLines.length) continue;
+
+      // Strip VTT inline tags: <b>, <i>, <u>, <ruby>, <rt>, <v ...>, <lang ...>, timestamps like <00:00:01.000>
+      const rawText = textLines.join('\n');
+      const cleanText = rawText
+        .replace(/<\d{2}:\d{2}[:\d.]*>/g, '') // timestamp tags
+        .replace(/<\/?[a-zA-Z][^>]*>/g, '')    // other tags
+        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
+        .trim();
+
+      if(cleanText) cues.push({start: startTime, end: endTime, text: cleanText});
+    }
+
+    // Sort by start time (VTT files should be ordered, but just in case)
+    cues.sort((a,b) => a.start - b.start);
+    capLines[idx] = cues;
   }
 
-  function selTrack(idx,el){
-    activeTrack=idx;
+  function parseVTTTimestamp(s){
+    // Formats: HH:MM:SS.mmm or MM:SS.mmm or HH:MM:SS,mmm (SRT-style)
+    if(!s) return NaN;
+    const clean = s.replace(',', '.').trim();
+    const parts = clean.split(':');
+    if(parts.length === 3){
+      return parseFloat(parts[0])*3600 + parseFloat(parts[1])*60 + parseFloat(parts[2]);
+    } else if(parts.length === 2){
+      return parseFloat(parts[0])*60 + parseFloat(parts[1]);
+    }
+    return NaN;
+  }
+
+  // Binary search for active cue — O(log n) instead of O(n) find()
+  function findActiveCue(cues, t){
+    if(!cues || !cues.length) return null;
+    let lo = 0, hi = cues.length - 1, result = null;
+    while(lo <= hi){
+      const mid = (lo + hi) >> 1;
+      const c = cues[mid];
+      if(t >= c.start && t <= c.end){
+        result = c; break;
+      } else if(t < c.start){
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    return result;
+  }
+
+  async function loadSub(u, label, idx){
+    try{
+      const txt = await (await fetch(u)).text();
+      parseVTT(txt, idx);
+
+      // Also add as a <track> element for native browser subtitle track (hidden, for API)
+      const blob = new Blob([txt], {type:'text/vtt'});
+      const tr = document.createElement('track');
+      tr.kind='subtitles'; tr.label=label; tr.src=URL.createObjectURL(blob); tr.srclang='und';
+      vid.appendChild(tr);
+
+      const el = document.createElement('div');
+      el.className='srow'; el.dataset.track=idx;
+      el.innerHTML=`<span>${label}</span><div class="dot"></div>`;
+      el.addEventListener('click', ()=>selTrack(idx, el, label));
+      cl.appendChild(el);
+
+      // Auto-restore saved subtitle preference
+      if(prefs.subTrack !== undefined && prefs.subLabel === label){
+        selTrack(idx, el, label);
+      }
+    }catch(e){ console.warn('Sub fail', u, e); }
+  }
+
+  function selTrack(idx, el, label){
+    activeTrack = idx;
     cl.querySelectorAll('.srow').forEach(r=>r.classList.remove('on'));
-    if(el)el.classList.add('on');
-    for(let i=0;i<vid.textTracks.length;i++)vid.textTracks[i].mode=i===idx?'hidden':'disabled';
-    cap.style.display=idx>=0?'block':'none';
-    if(idx<0)cap.textContent='';
+    if(el) el.classList.add('on');
+    for(let i=0;i<vid.textTracks.length;i++) vid.textTracks[i].mode = i===idx ? 'hidden' : 'disabled';
+    if(idx >= 0){
+      cap.style.display='block';
+      savePrefs({subTrack: idx, subLabel: label || ''});
+    } else {
+      cap.style.display='none';
+      cap.textContent='';
+      cap.classList.remove('has-text');
+      lastCapText='';
+      savePrefs({subTrack: -1, subLabel: ''});
+    }
     closeSettings();
   }
 
-  cl.querySelector('[data-track="-1"]').addEventListener('click',function(){selTrack(-1,this)});
-
-  function parseVTT(txt,idx){
-    const cues=[];
-    txt.split(/\n\n+/).forEach(block=>{
-      const lines=block.trim().split('\n');
-      const tl=lines.find(l=>l.includes('-->'));if(!tl)return;
-      const[s,e]=tl.split('-->').map(x=>vttT(x.trim()));
-      cues.push({start:s,end:e,text:lines.slice(lines.indexOf(tl)+1).join('\n').replace(/<[^>]+>/g,'')});
-    });
-    capLines[idx]=cues;
-  }
-  function vttT(s){const p=s.split(/[:,]/).map(Number);return p.length>=3?p[0]*3600+p[1]*60+(p[2]+(p[3]||0)/1000):p[0]*60+p[1]}
+  cl.querySelector('[data-track="-1"]').addEventListener('click', function(){
+    selTrack(-1, this, '');
+  });
 
   if(subs.length){
-    subs.forEach((u,i)=>loadSub(u.trim(),names[i]||`Track ${i+1}`,i));
+    subs.forEach((u,i)=>loadSub(u.trim(), names[i]||`Track ${i+1}`, i));
   }
 
   // ── MARKERS ──────────────────────────────────────
@@ -731,21 +871,37 @@ function init(cfg){
     pt.style.left=pct+'%';
     tt.textContent=`${fmt(ct)} / ${fmt(dur)}`;
 
-    if(activeTrack>=0&&capLines[activeTrack]){
-      const c=capLines[activeTrack].find(x=>ct>=x.start&&ct<=x.end);
-      cap.textContent=c?c.text:'';
+    // ── SUBTITLE RENDERING ────────────────────────
+    if(activeTrack>=0 && capLines[activeTrack]){
+      const cue = findActiveCue(capLines[activeTrack], ct);
+      const newText = cue ? cue.text : '';
+      if(newText !== lastCapText){
+        lastCapText = newText;
+        if(newText){
+          cap.textContent = newText;
+          cap.classList.add('has-text');
+        } else {
+          cap.classList.remove('has-text');
+          // Clear text after fade-out
+          setTimeout(()=>{ if(!cap.classList.contains('has-text')) cap.textContent=''; }, 200);
+        }
+      }
     }
 
+    // ── SKIP BTN ─────────────────────────────────
     const inI=!isNaN(introStart)&&ct>=introStart&&ct<introEnd;
     const inO=!isNaN(outroStart)&&ct>=outroStart&&ct<outroEnd;
     if(inI){
-      skipBtn.textContent='Skip Intro →';skipBtn.style.display='block';
+      skipBtn.textContent='Skip Intro →';
+      skipBtn.classList.add('visible');
       if(csi.checked&&!introDone){introDone=true;vid.currentTime=introEnd}
     } else if(inO){
-      skipBtn.textContent='Skip Outro →';skipBtn.style.display='block';
+      skipBtn.textContent='Skip Outro →';
+      skipBtn.classList.add('visible');
       if(cso.checked&&!outroDone){outroDone=true;vid.currentTime=outroEnd}
     } else {
-      skipBtn.style.display='none';
+      skipBtn.classList.remove('visible');
+      setTimeout(()=>{ if(!skipBtn.classList.contains('visible')) skipBtn.style.display='none'; }, 220);
     }
     if(ct<(introStart||Infinity))introDone=false;
     if(ct<(outroStart||Infinity))outroDone=false;
@@ -761,9 +917,7 @@ function init(cfg){
   vid.addEventListener('play',()=>setPlayIcon(false));
   vid.addEventListener('pause',()=>setPlayIcon(true));
 
-  // ── SPINNER: smart debounced logic ───────────────
-  // Never let stalled/waiting show spinner if we already have enough buffer.
-  // Use a short delay before showing so brief network blips don't flash the spinner.
+  // ── SPINNER ──────────────────────────────────────
   let spinShowT=null, spinHideT=null;
 
   function hasEnoughBuffer(){
@@ -778,35 +932,32 @@ function init(cfg){
 
   function showSpinner(){
     clearTimeout(spinHideT);
-    // Only show after 400ms delay — avoids flash for quick seeks/segment joins
     spinShowT=setTimeout(()=>{
-      // Double-check: if playing fine now, don't show
       if(!vid.paused && vid.readyState>=3) return;
-      spin.style.display='block';
+      spin.classList.add('vis');
     }, 400);
   }
 
   function hideSpinner(){
     clearTimeout(spinShowT);
-    // Small delay before hiding so it doesn't flicker on/off
-    spinHideT=setTimeout(()=>{ spin.style.display='none'; }, 80);
+    spinHideT=setTimeout(()=>{
+      spin.classList.remove('vis');
+      setTimeout(()=>{ if(!spin.classList.contains('vis')) spin.style.display='none'; }, 250);
+    }, 80);
   }
 
-  vid.addEventListener('waiting', ()=>{
-    if(!hasEnoughBuffer()) showSpinner();
-  });
-  vid.addEventListener('stalled', ()=>{
-    // stalled fires often on segment boundaries — only care if truly stuck
-    if(!hasEnoughBuffer()) showSpinner();
-  });
+  // Make spinner always render but toggle via class
+  spin.style.display='block';
+
+  vid.addEventListener('waiting', ()=>{ if(!hasEnoughBuffer()) showSpinner(); });
+  vid.addEventListener('stalled', ()=>{ if(!hasEnoughBuffer()) showSpinner(); });
   vid.addEventListener('playing',  hideSpinner);
   vid.addEventListener('canplay',  hideSpinner);
   vid.addEventListener('canplaythrough', hideSpinner);
   vid.addEventListener('seeked',   ()=>{ if(vid.readyState>=3) hideSpinner(); });
   vid.addEventListener('progress', ()=>{ if(!vid.paused && hasEnoughBuffer()) hideSpinner(); });
-  // Fallback: poll every 500ms and hide if video is actually running
   setInterval(()=>{
-    if(!vid.paused && !vid.ended && vid.readyState>=3 && spin.style.display!=='none'){
+    if(!vid.paused && !vid.ended && vid.readyState>=3 && spin.classList.contains('vis')){
       hideSpinner();
     }
   }, 500);
@@ -828,7 +979,7 @@ function init(cfg){
   }
   function popCF(){
     cf.classList.remove('pop');
-    void cf.offsetWidth; // reflow to restart animation
+    void cf.offsetWidth;
     cf.classList.add('pop');
     setTimeout(()=>cf.classList.remove('pop'),650);
   }
@@ -841,17 +992,14 @@ function init(cfg){
     return Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
   }
 
-  // Update tip position on hover
   pw.addEventListener('mousemove',e=>{
     const p=pctFromEvent(e);
     const tLeft=p*100;
     ptip.style.left=tLeft+'%';
     ptip.textContent=fmt(p*dur);
     pt.style.left=tLeft+'%';
-    pf.style.width=dragging?tLeft+'%':pf.style.width; // live update while dragging
   });
 
-  // Mouse drag
   pw.addEventListener('mousedown',e=>{
     if(e.button!==0)return;
     dragging=true;
@@ -873,7 +1021,6 @@ function init(cfg){
     dragging=false;pw.classList.remove('drag');
   });
 
-  // Touch drag
   pw.addEventListener('touchstart',e=>{
     dragging=true;pw.classList.add('drag');
     tSeek(e.touches[0]);
@@ -892,7 +1039,6 @@ function init(cfg){
     if(dur){vid.currentTime=p*dur;pf.style.width=(p*100)+'%';pt.style.left=(p*100)+'%';}
   }
 
-  // Seek ±N seconds
   function seek(s){
     vid.currentTime=Math.max(0,Math.min(dur||Infinity,vid.currentTime+s));
     flash(s>0?`+${s}s`:`${s}s`);
@@ -928,7 +1074,17 @@ function init(cfg){
   setupZone('tz-r',1);
 
   // ── VOLUME ───────────────────────────────────────
-  bm.addEventListener('click',()=>{vid.muted=!vid.muted;updVol();flash(vid.muted?'Muted':'Unmuted')});
+  // Restore mute state
+  if(prefs.muted !== undefined) vid.muted = prefs.muted;
+  if(prefs.volume !== undefined) vid.volume = prefs.volume;
+
+  bm.addEventListener('click',()=>{
+    vid.muted=!vid.muted;
+    updVol();
+    flash(vid.muted?'Muted':'Unmuted');
+    savePrefs({muted: vid.muted});
+  });
+
   function updVol(){
     const v=vid.muted?0:vid.volume;
     if(v===0){
@@ -942,6 +1098,9 @@ function init(cfg){
       vw.setAttribute('d','M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14');
     }
   }
+
+  // Save volume on change
+  vid.addEventListener('volumechange', ()=>savePrefs({muted: vid.muted, volume: vid.volume}));
 
   // ── FULLSCREEN ───────────────────────────────────
   bfs.addEventListener('click',toggleFS);
@@ -966,10 +1125,7 @@ function init(cfg){
       ?'<polyline points="4,14 10,14 10,20"/><polyline points="20,10 14,10 14,4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>'
       :'<polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>';
     if(!inFS&&screen.orientation?.unlock)screen.orientation.unlock();
-    // Reposition settings panel after fullscreen change
-    if(settingsPanel.classList.contains('open')){
-      requestAnimationFrame(positionPanel);
-    }
+    if(settingsPanel.classList.contains('open')) requestAnimationFrame(positionPanel);
   }));
 
   // ── PiP ─────────────────────────────────────────
@@ -1003,10 +1159,7 @@ function init(cfg){
     }
   });
   vid.addEventListener('pause',showUI);
-  vid.addEventListener('play',()=>{
-    // restart auto-hide on play
-    showUI();
-  });
+  vid.addEventListener('play',()=>showUI());
 
   // ── KBD FLASH ───────────────────────────────────
   function flash(msg){kf.textContent=msg;kf.classList.add('on');clearTimeout(kT);kT=setTimeout(()=>kf.classList.remove('on'),1400)}
@@ -1021,7 +1174,7 @@ function init(cfg){
       case'ArrowLeft':case'j':case'J':e.preventDefault();seek(e.shiftKey?-30:-10);break;
       case'ArrowUp':e.preventDefault();vid.volume=Math.min(1,vid.volume+.1);vid.muted=false;updVol();flash(`Volume ${Math.round(vid.volume*100)}%`);break;
       case'ArrowDown':e.preventDefault();vid.volume=Math.max(0,vid.volume-.1);updVol();flash(`Volume ${Math.round(vid.volume*100)}%`);break;
-      case'm':case'M':vid.muted=!vid.muted;updVol();flash(vid.muted?'Muted':'Unmuted');break;
+      case'm':case'M':vid.muted=!vid.muted;updVol();flash(vid.muted?'Muted':'Unmuted');savePrefs({muted:vid.muted});break;
       case'f':case'F':toggleFS();break;
       case's':case'S':
         if(settingsPanel.classList.contains('open'))closeSettings();
@@ -1031,8 +1184,8 @@ function init(cfg){
         if(!isNaN(introEnd)&&vid.currentTime>=introStart&&vid.currentTime<introEnd){vid.currentTime=introEnd;introDone=true;flash('Skipped Intro')}break;
       case'p':case'P':
         if(document.pictureInPictureEnabled){document.pictureInPictureElement?document.exitPictureInPicture():vid.requestPictureInPicture();}break;
-      case'>':case'.':vid.playbackRate=Math.min(2,+(vid.playbackRate+.25).toFixed(2));flash(`Speed: ${vid.playbackRate}×`);break;
-      case'<':case',':vid.playbackRate=Math.max(.25,+(vid.playbackRate-.25).toFixed(2));flash(`Speed: ${vid.playbackRate}×`);break;
+      case'>':case'.':vid.playbackRate=Math.min(2,+(vid.playbackRate+.25).toFixed(2));flash(`Speed: ${vid.playbackRate}×`);savePrefs({speed:vid.playbackRate});break;
+      case'<':case',':vid.playbackRate=Math.max(.25,+(vid.playbackRate-.25).toFixed(2));flash(`Speed: ${vid.playbackRate}×`);savePrefs({speed:vid.playbackRate});break;
       case'0':case'1':case'2':case'3':case'4':case'5':case'6':case'7':case'8':case'9':
         if(dur){vid.currentTime=parseInt(e.key)/10*dur;flash(`Jump: ${e.key}0%`)}break;
       case'Home':vid.currentTime=0;flash('Start');break;
@@ -1040,10 +1193,8 @@ function init(cfg){
     }
   });
 
-  // Start showing UI
   showUI();
 }
 </script>
 </body>
 </html>
-
